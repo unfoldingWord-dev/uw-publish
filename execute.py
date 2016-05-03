@@ -1,3 +1,16 @@
+#!/usr/bin/env python2
+# -*- coding: utf8 -*-
+#
+#    Copyright (c) 2016 unfoldingWord
+#    http://creativecommons.org/licenses/MIT/
+#    See LICENSE file for details.
+#
+#    Contributors:
+#    Phil Hopper <phillip_hopper@wycliffeassociates.org>
+#
+#    Usage: python execute.py name_of_script_in_app_code_cli_dir
+#
+from __future__ import unicode_literals
 import sys
 
 if __name__ == '__main__':
@@ -9,5 +22,6 @@ if __name__ == '__main__':
         if cmd[-3:] != '.py':
             cmd += '.py'
 
-        print cmd
-        execfile('app_code/cli/' + cmd)
+        with open('app_code/cli/' + cmd) as f:
+            code = compile(f.read(), cmd, 'exec')
+            exec code
