@@ -37,7 +37,7 @@ class Book(object):
         # the first block should be everything before the first chapter marker
         current_index = 0
         while blocks[current_index][:2] != '\c':
-            self.header_usfm += blocks[current_index] + '\n'
+            self.header_usfm += blocks[current_index].rstrip()
             current_index += 1
 
         # loop through the blocks
@@ -162,7 +162,8 @@ class Book(object):
         for chap in self.chapters:
             new_usfm += chap.usfm + '\n'
 
-        self.usfm = self.header_usfm + '\n' + new_usfm
+        # extra space between header and first chapter
+        self.usfm = self.header_usfm + '\n\n' + new_usfm
 
 
 class Chapter(object):
@@ -185,7 +186,7 @@ class Chapter(object):
         previous_line = ''
 
         # insert the first marker now
-        newlines = ['\\s5', ]
+        newlines = ['\n\\s5', ]
         i = 0
 
         for line in self.usfm.splitlines():
@@ -204,9 +205,9 @@ class Chapter(object):
 
                         # insert before \p, not after
                         if previous_line == '\\p':
-                            newlines.insert(len(newlines) - 1, '\\s5')
+                            newlines.insert(len(newlines) - 1, '\n\\s5')
                         else:
-                            newlines.append('\\s5')
+                            newlines.append('\n\\s5')
 
                         i += 1
 
