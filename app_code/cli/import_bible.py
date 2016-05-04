@@ -1,4 +1,15 @@
-from __future__ import print_function
+#!/usr/bin/env python2
+# -*- coding: utf8 -*-
+#
+#    Copyright (c) 2014, 2016 unfoldingWord
+#    http://creativecommons.org/licenses/MIT/
+#    See LICENSE file for details.
+#
+#    Contributors:
+#    Jesse Griffin <jesse@distantshores.org>
+#    Phil Hopper <phillip_hopper@wycliffeassociates.org>
+
+from __future__ import print_function, unicode_literals
 import argparse
 import codecs
 import json
@@ -23,7 +34,6 @@ unzipped_dir = ''
 chunk_url = 'https://api.unfoldingword.org/ts/txt/2/{0}/en/ulb/chunks.json'
 out_template = '/var/www/vhosts/api.unfoldingword.org/httpdocs/{0}/txt/1/{0}-{1}'
 
-chapter_re = re.compile(r'\\c [0-9]* ', re.UNICODE)
 s5_re = re.compile(r'\\s5\s*')
 nl_re = re.compile(r'\n{2,}')
 
