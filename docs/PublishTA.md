@@ -21,6 +21,9 @@
     rm ta-en.json
     mv /home/phopper/ta-en.json ta-en.json
     chown syncthing:syncthing ta-en.json
+    # copy to the history directory,
+    # set v## to the current version number
+    cp ta-en.json history/ta-en.v##.json
     exit
     ```
 1. In the `unfoldingWord.github.io` repository, update `_includes/ta_body.html` with the correct version number and PDF file name.
