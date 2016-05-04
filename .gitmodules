@@ -1,3 +1,3 @@
 [submodule "lib/usfm_tools"]
 	path = lib/usfm_tools
-	url = git@github.com:openenglishbible/USFM-Tools
+	url = https://github.com/openenglishbible/USFM-Tools.git
