@@ -1,5 +1,7 @@
 # Steps for Publishing ULB
 
+__Don't forget to notify interested parties when finished, including publishing@unfoldingword.org.__
+
     python execute.py import_bible \
     --resource https://github.com/spthmpsn/Hu1Bible/archive/master.zip \
     --lang [LANGCODE] \

@@ -21,6 +21,8 @@ import sys
 # Import USFM-Tools
 import datetime
 
+from general_tools.file_utils import make_dir
+
 base_dir = os.path.dirname(os.path.realpath(__file__))
 usfm_tools_dir = os.path.join(base_dir, 'lib', 'usfm_tools')
 
@@ -158,14 +160,6 @@ def get_html_list(text):
     if started:
         new_text.append('</ul>')
     return ''.join(new_text)
-
-
-def make_dir(d):
-    """
-    Simple wrapper to make a directory if it does not exist.
-    """
-    if not os.path.exists(d):
-        os.makedirs(d, 0o755)
 
 
 def write_json(outfile, p):
