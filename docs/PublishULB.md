@@ -14,7 +14,7 @@
     python /var/www/vhosts/door43.org/tools/uwb/api_publish.py \
     --sourceDir /var/www/vhosts/api.unfoldingword.org/httpdocs/ulb/txt/1/ulb-[LANGCODE]
 
-    python /var/www/vhosts/door43.org/tools/uw/update_catalog.py
+    python execute.py update_catalog
     
     chown -R syncthing:syncthing /var/www/vhosts/api.unfoldingword.org/httpdocs/
 
