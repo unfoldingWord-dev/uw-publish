@@ -10,7 +10,10 @@
 #
 #  Usage: ./generate.sh
 
-# update git submodules
+# install/update git submodules
 git submodule sync
 git submodule update --init
 git pull --recurse-submodules
+
+# install/update python libraries
+pip install -r requirements.txt
