@@ -10,11 +10,11 @@
 #
 
 from __future__ import print_function, unicode_literals
-from general_tools.print_utils import print_notice
+from general_tools.print_utils import print_ok
 from uw.update_catalog import update_catalog
 
 if __name__ == '__main__':
     print()
-    print_notice('Updating the catalogs...')
+    print_ok('STARTING: ', 'updating the catalogs.')
     update_catalog()
-    print_notice('Finished updating the catalogs.')
+    print_ok('FINISHED: ', 'updating the catalogs.')
