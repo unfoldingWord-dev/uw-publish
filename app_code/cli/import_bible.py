@@ -18,8 +18,9 @@ import re
 import shutil
 import sys
 import datetime
-import zipfile
 from app_code.bible.content import Book, Chapter, Chunk
+from general_tools.file_utils import unzip, make_dir
+from general_tools.url_utils import download_file, get_url
 
 try:
     import urllib.request as urllib2
@@ -55,7 +56,7 @@ def main(resource, lang, slug, name, checking, contrib, ver, check_level,
     out_dir = out_template.format(slug, lang)
 
     if not os.path.isfile(downloaded_file):
-        get_zip(resource, downloaded_file)
+        download_file(resource, downloaded_file)
 
     unzip(downloaded_file, unzipped_dir)
 
@@ -164,30 +165,6 @@ def get_versification():
     return scheme
 
 
-def get_url(url):
-    request = urllib2.urlopen(url)
-    response = request.read()
-    request.close()
-    return response
-
-
-def get_zip(url, outfile):
-    print('Getting ZIP')
-    # noinspection PyBroadException
-    try:
-        request = urllib2.urlopen(url)
-    except:
-        print('    => ERROR retrieving %s\nCheck the URL' % url)
-        sys.exit(1)
-    with open(outfile, 'wb') as fp:
-        shutil.copyfileobj(request, fp)
-
-
-def unzip(source, dest):
-    with zipfile.ZipFile(source) as zf:
-        zf.extractall(dest)
-
-
 def get_re(text, regex):
     se = regex.search(text)
     if se:
@@ -227,11 +204,6 @@ def write_file(f, content):
     out = codecs.open(f, encoding='utf-8', mode='w')
     out.write(content)
     out.close()
-
-
-def make_dir(d):
-    if not os.path.exists(d):
-        os.makedirs(d, 0o755)
 
 
 if __name__ == '__main__':
