@@ -147,7 +147,7 @@ def import_obs(lang_data, git_repo, door43_url, no_pdf):
         sys.exit(1)
 
     # create Dokuwiki pages
-    print_notice('Begin creating Dokuwiki pages.')
+    print_ok('Begin: ', 'creating Dokuwiki pages.')
     for chapter in obs_obj.chapters:
 
         chapter_title = '====== {0} ======'.format(chapter['title'])
@@ -163,13 +163,13 @@ def import_obs(lang_data, git_repo, door43_url, no_pdf):
         with codecs.open(file_name, 'w', 'utf-8-sig') as out_file:
             out_file.write('{0}\n\n{1}{2}\n'.format(chapter_title, chapter_body, chapter_ref))
 
-    print_notice('Finished creating Dokuwiki pages.')
+    print_ok('Finished: ', 'creating Dokuwiki pages.')
 
     # Create image symlinks on api.unfoldingword.org
     try:
         print('Creating symlink to images directory...', end=' ')
         link_name = '/var/www/vhosts/api.unfoldingword.org/httpdocs/obs/jpg/1/{0}'.format(lang_code.lower())
-        if not os.path.isfile(link_name) and not os.path.islink(link_name):
+        if not os.path.isfile(link_name) and not os.path.isdir(link_name) and not os.path.islink(link_name):
             os.symlink(link_source, link_name)
     finally:
         print('finished.')
@@ -177,7 +177,7 @@ def import_obs(lang_data, git_repo, door43_url, no_pdf):
     # Create PDF via ConTeXt
     if not no_pdf and tools_dir and os.path.isdir(tools_dir):
         try:
-            print_notice('Beginning PDF generation.')
+            print_ok('Beginning: ', 'PDF generation.')
             script_file = os.path.join(tools_dir, 'obs/book/pdf_export.sh')
             out_dir = api_dir.format(lang_code)
             make_dir(out_dir)
@@ -211,7 +211,7 @@ def import_obs(lang_data, git_repo, door43_url, no_pdf):
             print('  PDF subprocess finished with exit code {0}'.format(exit_code))
 
         finally:
-            print_notice('Finished generating PDF.')
+            print_ok('Finished:', 'generating PDF.')
 
 
 if __name__ == '__main__':
@@ -269,7 +269,7 @@ if __name__ == '__main__':
         ObsInProgress.run()
         print_ok('FINISHED: ', 'updating OBS in progress.')
 
-        print_ok('FINISHED: ', 'Please check door43.org and api.unfoldingword.org.')
+        print_ok('ALL FINISHED: ', 'Please check door43.org and api.unfoldingword.org.')
         print_notice('Don\'t forget to notify the interested parties.')
 
     finally:
