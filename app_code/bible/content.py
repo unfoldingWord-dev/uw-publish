@@ -25,9 +25,12 @@ class Book(object):
     def set_usfm(self, new_usfm):
         self.usfm = new_usfm.replace('\r\n', '\n')
 
-    def verify_chapters_and_verses(self):
+    def verify_chapters_and_verses(self, same_line=False):
 
-        print('Verifying ' + self.book_id)
+        if same_line:
+            print('Verifying ' + self.book_id + '... ', end=' ')
+        else:
+            print('Verifying ' + self.book_id)
 
         # split into chapters
         self.check_chapters(self.chapter_re.split(self.usfm))

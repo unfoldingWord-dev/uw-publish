@@ -1,6 +1,6 @@
 # Steps for Publishing OBS
 
-__Don't forget to notify interested parties when finished, including publishing@unfoldingword.org.__
+**Don't forget to notify interested parties when finished, including publishing@unfoldingword.org.**
 
 ### From Dokuwiki pages (old instructions)
 1. Create/Update https://door43.org/en/uwadmin/LANG_CODE/obs/status. Use https://door43.org/en/uwadmin/en/obs/status as a template.
