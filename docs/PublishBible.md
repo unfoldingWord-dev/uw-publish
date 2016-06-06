@@ -25,14 +25,3 @@ On pki.unfoldingword.org run
     ```
     cd ~/Projects/uw-web && make publish
     ```
-
-### Removing a Bible from bible.unfoldingword.org
-
-* Run these commands on the us.door43.org server:
-    ```
-    cd /var/www/vhosts/bible.unfoldingword.org/app/content/texts
-    rm -rf uw_lang_ulb (or uw_* to remove and regenerate all)
-    ```
-
-* Regenerate using the steps above for __Regenerate bible.unfoldingword.org__
-
