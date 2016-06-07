@@ -13,6 +13,10 @@
     // test to see if the correct list of directories is returned
     find . -type d -name sr
     
+    // or maybe like this 
+    find . -type d ! -path './2/*/*/avd' -path './2/*/avd'
+    
+    // remove matching files
     find . -type d -name sr -exec rm -rf {} \;
     
     cd /home/phopper/uw-publish
