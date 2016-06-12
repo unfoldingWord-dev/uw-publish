@@ -3,7 +3,7 @@
 **Don't forget to notify interested parties when finished, including publishing@unfoldingword.org.**
 
     python execute.py import_bible_source \
-    --resource https://github.com/Door43/ulb-en/archive/master.zip \
+    --resource https://github.com/Door43/ulb-[LANGCODE]/archive/master.zip \
     --lang [LANGCODE] \
     --slug ulb \
     --version '3.1' \
@@ -12,11 +12,6 @@
     --checking 'Translation Team' \
     --name 'Unlocked Literal Bible' \
     --translators 'www.unboundbible.org'
-
-    python /var/www/vhosts/door43.org/tools/uwb/api_publish.py \
-    --sourceDir /var/www/vhosts/api.unfoldingword.org/httpdocs/ulb/txt/1/ulb-[LANGCODE]
-
-    python execute.py update_catalog
     
     chown -R syncthing:syncthing /var/www/vhosts/api.unfoldingword.org/httpdocs/
 
