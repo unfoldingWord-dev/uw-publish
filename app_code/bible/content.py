@@ -25,12 +25,9 @@ class Book(object):
     def set_usfm(self, new_usfm):
         self.usfm = new_usfm.replace('\r\n', '\n')
 
-    def verify_chapters_and_verses(self, same_line=False):
+    def verify_chapters_and_verses(self):
 
-        if same_line:
-            print('Verifying ' + self.book_id + '... ', end=' ')
-        else:
-            print('Verifying ' + self.book_id)
+        print('Verifying ' + self.book_id)
 
         # split into chapters
         self.check_chapters(self.chapter_re.split(self.usfm))
@@ -204,7 +201,7 @@ class Chapter(object):
                     i += 1
 
                 if i < len(chunks):
-                    verse_search = re.search(r'\\v {0}[\s-]'.format(chunks[i].first_verse), line)
+                    verse_search = re.search(r'\\v {0} '.format(chunks[i].first_verse), line)
                     if verse_search:
 
                         # insert before \p, not after
@@ -222,16 +219,10 @@ class Chapter(object):
 
 
 class Chunk(object):
-    def __init__(self, chunk_obj):
-        chunk_id = chunk_obj['id']
+    def __init__(self, chunk_id):
         split_id = chunk_id.split('-')
         if len(split_id) != 2:
             raise SyntaxError('Invalid chunk ID: ' + chunk_id)
 
         self.chapter_num = int(split_id[0])
-        self.first_verse = int(chunk_obj['firstvs'])
-
-        if 'lastvs' in chunk_obj:
-            self.last_verse = int(chunk_obj['lastvs'])
-        else:
-            self.last_verse = 0
+        self.first_verse = int(split_id[1])

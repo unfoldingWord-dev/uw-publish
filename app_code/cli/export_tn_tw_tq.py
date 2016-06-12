@@ -16,6 +16,7 @@ import glob
 import json
 import os
 import re
+import sys
 
 # Import USFM-Tools
 import datetime
@@ -23,7 +24,21 @@ import datetime
 from general_tools.file_utils import make_dir
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
+usfm_tools_dir = os.path.join(base_dir, 'lib', 'usfm_tools')
 
+# if not run through execute.py this path may be different
+if not os.path.isdir(usfm_tools_dir):
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+    usfm_tools_dir = os.path.join(base_dir, 'lib', 'usfm_tools')
+
+sys.path.append(usfm_tools_dir)
+try:
+    # noinspection PyUnresolvedReferences
+    import transform as usfm_tools
+except Exception as e:
+    print(e.message)
+    print('Please ensure that {0} exists.'.format(usfm_tools_dir))
+    sys.exit(1)
 
 root = '/var/www/vhosts/door43.org/httpdocs/data/gitrepo'
 pages = os.path.join(root, 'pages')
