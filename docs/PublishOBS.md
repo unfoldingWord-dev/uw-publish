@@ -1,6 +1,6 @@
 # Steps for Publishing OBS
 
-__Don't forget to notify interested parties when finished, including publishing@unfoldingword.org.__
+**Don't forget to notify interested parties when finished, including publishing@unfoldingword.org.**
 
 ### From Dokuwiki pages (old instructions)
 1. Create/Update https://door43.org/en/uwadmin/LANG_CODE/obs/status. Use https://door43.org/en/uwadmin/en/obs/status as a template.
@@ -18,6 +18,8 @@ __Don't forget to notify interested parties when finished, including publishing@
 1. Replace the `obs-LANG_CODE.json` file with the file created by step 1.
 1. Edit `status-LANG_CODE.json` and update the information as needed.
 1. Commit the changes and push to github.
+1. Make sure the changes are pulled to `api.unfoldingword.org/obs/txt/1/LANG-CODE`.
 1. Run `python execute.py import_obs -r https://github.com/unfoldingWord/obs-LANG_CODE -l LANG_CODE`.
+1. Run `chown -R syncthing:syncthing /var/www/vhosts/api.unfoldingword.org/httpdocs/`.
 1. On pki.unfoldingword.org run `sudo /root/tools/uw/sign.py`.
 1. Regenerate the uW website, `make publish`.
