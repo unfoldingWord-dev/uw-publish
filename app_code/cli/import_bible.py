@@ -259,7 +259,7 @@ def get_chunks(book):
         raise Exception('Could not load chunks for ' + book.book_id)
 
     for chunk in json.loads(chunk_str):
-        book.chunks.append(Chunk(chunk['id']))
+        book.chunks.append(Chunk(chunk))
 
 
 if __name__ == '__main__':

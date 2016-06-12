@@ -22,14 +22,13 @@ import re
 import shutil
 import sys
 import datetime
+
+from uw.update_catalog import update_catalog
+
 from app_code.bible.content import Book, Chapter, Chunk
 from general_tools.file_utils import unzip, make_dir
 from general_tools.url_utils import download_file, get_url
-
-try:
-    import urllib.request as urllib2
-except ImportError:
-    import urllib2
+from app_code.cli.api_publish import api_publish
 
 
 # remember these so we can delete them
@@ -134,6 +133,18 @@ def main(resource, lang, slug, name, checking, contrib, ver, check_level,
                          }
               }
     write_json('{0}/status.json'.format(out_dir), status)
+
+    print('Publishing to the API...')
+    with api_publish(out_dir) as api:
+        api.run()
+    print('Finished publishing to the API.')
+
+    # update the catalog
+    print()
+    print('Updating the catalogs...', end=' ')
+    update_catalog()
+    print('finished.')
+
     print('Check {0} and do a git push'.format(out_dir))
 
 
@@ -188,7 +199,7 @@ def get_chunks(book):
         raise Exception('Could not load chunks for ' + book.book_id)
 
     for chunk in json.loads(chunk_str):
-        book.chunks.append(Chunk(chunk['id']))
+        book.chunks.append(Chunk(chunk))
 
 
 def write_json(out_file, p):
