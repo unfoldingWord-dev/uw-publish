@@ -32,6 +32,10 @@ class Book(object):
         else:
             print('Verifying ' + self.book_id)
 
+        # check for git conflicts
+        if '<<<< HEAD' in self.usfm:
+            self.append_error('There is a Git conflict header in ' + self.name)
+
         # split into chapters
         self.check_chapters(self.chapter_re.split(self.usfm))
 
