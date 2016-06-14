@@ -7,7 +7,9 @@
 1. SSH to us.door43.org and `sudo SSH_AUTH_SOCK=$SSH_AUTH_SOCK bash`.
 1. Create `noto-LANG_CODE.tex` in `tools/obs/tex`.
 1. Run `tools/uw/publish.sh -L LANG_CODE`.
-1. Run `tools/obs/json/obs_inprogress.py`.
+1. Run `python execute.py update_catalog`.
+1. Run `python execute.py obs_in_progress`.
+1. Run `chown -R syncthing:syncthing /var/www/vhosts/api.unfoldingword.org/httpdocs/`.
 1. On pki.unfoldingword.org run `sudo /root/tools/uw/sign.py`.
 1. Regenerate the uW website, `make publish`.
 
