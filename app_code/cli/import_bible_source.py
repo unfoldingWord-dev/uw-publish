@@ -27,7 +27,6 @@ from app_code.bible.content import Book, Chapter, Chunk
 from general_tools.file_utils import unzip, write_file
 from general_tools.url_utils import download_file, get_url
 from app_code.cli.api_publish import api_publish
-import yaml
 
 # remember these so we can delete them
 downloaded_file = ''
@@ -42,7 +41,7 @@ nl_re = re.compile(r'\n{2,}')
 api_root = 'https://raw.githubusercontent.com/unfoldingWord-dev/uw-api/develop/static'
 vrs_file = api_root + '/versification/ufw/ufw.vrs'
 book_file = api_root + '/versification/ufw/books-en.json'
-chunk_url = api_root + '/versification/ufw/chunks/{0}.yaml'
+chunk_url = api_root + '/versification/ufw/chunks/{0}.json'
 
 
 def main(resource, lang, slug, name, checking, contrib, ver, check_level,
@@ -197,7 +196,7 @@ def get_chunks(book):
     if not chunk_str:
         raise Exception('Could not load chunks for ' + book.book_id)
 
-    chunks_obj = yaml.load(chunk_str)
+    chunks_obj = json.loads(chunk_str)
 
     # chunk it
     for chapter in chunks_obj:

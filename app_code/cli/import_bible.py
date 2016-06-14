@@ -42,7 +42,6 @@ except ImportError:
 # remember these so we can delete them
 download_dir = ''
 
-chunk_url = 'https://api.unfoldingword.org/ts/txt/2/{0}/en/ulb/chunks.json'
 out_template = '/var/www/vhosts/api.unfoldingword.org/httpdocs/{0}/txt/1/{1}-{2}'
 
 id_re = re.compile(r'\\id\s+(\w{3}).*')
@@ -50,8 +49,10 @@ s5_re = re.compile(r'\\s5\s*')
 nl_re = re.compile(r'\n{2,}')
 
 # TODO: change these to point to the API when it is available
-vrs_file = 'https://raw.githubusercontent.com/unfoldingWord-dev/uw-api/develop/static/versification/ufw/ufw.vrs'
-book_file = 'https://raw.githubusercontent.com/unfoldingWord-dev/uw-api/develop/static/versification/ufw/books-en.json'
+api_root = 'https://raw.githubusercontent.com/unfoldingWord-dev/uw-api/develop/static'
+vrs_file = api_root + '/versification/ufw/ufw.vrs'
+book_file = api_root + '/versification/ufw/books-en.json'
+chunk_url = api_root + '/versification/ufw/chunks/{0}.json'
 
 
 def main(git_repo, domain):
@@ -258,8 +259,10 @@ def get_chunks(book):
     if not chunk_str:
         raise Exception('Could not load chunks for ' + book.book_id)
 
-    for chunk in json.loads(chunk_str):
-        book.chunks.append(Chunk(chunk))
+    # chunk it
+    for chapter in json.loads(chunk_str):
+        for first_verse in chapter['first_verses']:
+            book.chunks.append(Chunk(chapter['chapter'], first_verse))
 
 
 if __name__ == '__main__':
