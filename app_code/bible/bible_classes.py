@@ -14,6 +14,8 @@ class BibleMetaData(object):
         if file_name:
             if os.path.isfile(file_name):
                 self.__dict__ = load_json_object(file_name)
+                if 'versification' not in self.__dict__:
+                    self.versification = 'ufw'
             else:
                 raise IOError('The file {0} was not found.'.format(file_name))
         else:
@@ -28,3 +30,4 @@ class BibleMetaData(object):
             self.source_text = ''
             self.source_text_version = ''
             self.version = ''
+            self.versification = 'ufw'
