@@ -35,8 +35,9 @@ class ObsPublishedLangs(object):
         # noinspection PyBroadException
         try:
             response = get_url(url)
-        except:
+        except Exception as e:
             print("  => ERROR retrieving %s\nCheck the URL" % url)
+            print(e.message)
             sys.exit(1)
         return json.loads(response)
 
