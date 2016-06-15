@@ -137,7 +137,10 @@ class OBS(object):
         errors = []
 
         for chapter in self.chapters:
-            obs_chapter = OBSChapter(chapter)
+            if type(chapter) is OBSChapter:
+                obs_chapter = chapter
+            else:
+                obs_chapter = OBSChapter(chapter)
             errors = errors + obs_chapter.get_errors()
 
         if len(errors) == 0:

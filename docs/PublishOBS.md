@@ -4,6 +4,11 @@
 
 ### From Dokuwiki pages (old instructions)
 1. Create/Update https://door43.org/en/uwadmin/LANG_CODE/obs/status. Use https://door43.org/en/uwadmin/en/obs/status as a template.
+
+    ```
+    Be sure checking_level is in [1, 2, 3] and publish_date = Today (2016-06-14)
+    ```
+    
 1. SSH to us.door43.org and `sudo SSH_AUTH_SOCK=$SSH_AUTH_SOCK bash`.
 1. Create `noto-LANG_CODE.tex` in `tools/obs/tex`.
 1. Run `tools/uw/publish.sh -L LANG_CODE`.
