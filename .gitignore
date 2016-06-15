@@ -5,3 +5,6 @@ __pycache__/
 .idea/
 uw-publish.iml
 activate_virtual_env.sh
+output/*
+
+!.gitkeep
