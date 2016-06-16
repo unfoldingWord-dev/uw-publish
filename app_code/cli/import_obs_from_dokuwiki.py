@@ -25,7 +25,6 @@ from general_tools.print_utils import print_ok, print_error, print_notice
 from general_tools.smartquotes import smartquotes
 from app_code.cli.obs_published_langs import ObsPublishedLangs
 from app_code.obs.obs_classes import OBS, OBSChapter, OBSEncoder
-from app_code.util.languages import Language
 import os
 import sys
 
@@ -65,11 +64,6 @@ html_tag_re = re.compile(r'<.*?>', re.UNICODE)
 link_tag_re = re.compile(r'\[\[.*?\]\]', re.UNICODE)
 img_tag_re = re.compile(r'{{.*?}}', re.UNICODE)
 img_link_re = re.compile(r'https://.*\.(jpg|jpeg|gif)', re.UNICODE)
-
-# regular expressions for front matter
-obs_name_re = re.compile(r'\| (.*)\*\*', re.UNICODE)
-tag_line_re = re.compile(r'\n\*\*.*openbiblestories', re.UNICODE | re.DOTALL)
-link_re = re.compile(r'\[\[.*?\]\]', re.UNICODE)
 
 
 def get_chapter(chapter_path, chapter_number):
@@ -149,18 +143,6 @@ def get_dump(j):
     return json.dumps(j, sort_keys=True)
 
 
-def load_lang_strings():
-    langs = Language.load_languages()
-    return_val = {}
-    if not langs:
-        return return_val
-
-    for lang_obj in langs:  # :type Language
-        return_val[lang_obj.lc] = lang_obj.ln
-
-    return return_val
-
-
 def get_json_dict(stat_file):
     return_val = {}
     if os.path.isfile(stat_file):
@@ -223,56 +205,6 @@ def uw_qa(obs, lang_code, status_dict):
     return flag
 
 
-def update_uw_admin_status_page():
-    ObsPublishedLangs.update_page(ObsPublishedLangs.cat_url, ObsPublishedLangs.uw_stat_page)
-
-
-def get_front_matter(lang_code, today_str):
-    return_val = OBS.get_front_matter()
-    return_val['language'] = lang_code
-    return_val['date_modified'] = today_str
-
-    front_path = os.path.join(pages, lang_code, 'obs', 'front-matter.txt')
-    if os.path.exists(front_path):
-
-        with codecs.open(front_path, 'r', encoding='utf-8') as in_file:
-            front = in_file.read()
-
-        for l in link_re.findall(front):
-            if '|' in l:
-                clean_url = l.split('|')[1].replace(']', '')
-            else:
-                clean_url = l.replace(']', '').replace('[', '')
-            front = front.replace(l, clean_url)
-
-        return_val['front-matter'] = front
-
-        obs_name_se = obs_name_re.search(front)
-        if obs_name_se:
-            return_val['name'] = obs_name_se.group(1)
-
-        tag_line_se = tag_line_re.search(front)
-        if tag_line_se:
-            return_val['tagline'] = tag_line_se.group(0).split('**')[1].strip()
-
-    return return_val
-
-
-def get_back_matter(lang_code, today_str):
-    return_val = OBS.get_front_matter()
-    return_val['language'] = lang_code
-    return_val['date_modified'] = today_str
-
-    back_path = os.path.join(pages, lang_code, 'obs', 'back-matter.txt')
-    if os.path.exists(back_path):
-        with codecs.open(back_path, 'r', encoding='utf-8') as in_file:
-            back = in_file.read()
-
-        return_val['back-matter'] = clean_text(back)
-
-    return return_val
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -316,7 +248,7 @@ if __name__ == '__main__':
     today = ''.join(str(datetime.date.today()).rsplit('-')[0:3])
 
     print('Loading languages...', end=' ')
-    lang_dict = load_lang_strings()
+    lang_dict = OBS.load_lang_strings()
     print('finished.')
 
     print('Loading the catalog...', end=' ')
@@ -398,8 +330,8 @@ if __name__ == '__main__':
 
     if test_export:
         print('Testing {0} export...'.format(lang), end=' ')
-        front_json = get_front_matter(lang, today)
-        back_json = get_back_matter(lang, today)
+        front_json = OBS.get_front_matter(pages, lang, today)
+        back_json = OBS.get_back_matter(pages, lang, today)
         if not uw_qa(obs_obj, lang, status):
             print('---> QA Failed.')
             sys.exit(1)
@@ -425,8 +357,8 @@ if __name__ == '__main__':
         if 'checking_level' in status and 'publish_date' in status:
             if status['checking_level'] in ['1', '2', '3'] and status['publish_date'] == str(datetime.date.today()):
 
-                front_json = get_front_matter(lang, today)
-                back_json = get_back_matter(lang, today)
+                front_json = OBS.get_front_matter(pages, lang, today)
+                back_json = OBS.get_back_matter(pages, lang, today)
                 if not uw_qa(obs_obj, lang, status):
                     print_error('Quality check did not pass.')
                     sys.exit(1)
@@ -449,7 +381,9 @@ if __name__ == '__main__':
     if uw_export:
         uw_cat_json = get_dump(uw_catalog)
         write_page(uw_cat_path, uw_cat_json)
-        update_uw_admin_status_page()
+
+        # update uw_admin status page
+        ObsPublishedLangs.update_page(ObsPublishedLangs.cat_url, ObsPublishedLangs.uw_stat_page)
 
     # Create image symlinks on api.unfoldingword.org
     try:
