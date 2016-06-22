@@ -10,3 +10,7 @@ def get_app_root():
 
 def get_static_dir():
     return os.path.join(get_app_root(), 'static')
+
+
+def get_output_dir():
+    return os.path.join(get_app_root(), 'output')
