@@ -250,6 +250,7 @@ def get_re(text, regex):
 
 def get_chunks(versification, book):
     """
+    :param versification:
     :type book: Book
     """
     global chunk_url

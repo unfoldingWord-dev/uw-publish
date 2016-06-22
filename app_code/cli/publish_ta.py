@@ -112,7 +112,7 @@ def main(git_repo):
     manual.load_pages(content_dir)
     print('finished.')
 
-    file_name = os.path.join(get_output_dir(), manual.meta.manual + '.json')
+    file_name = os.path.join(get_output_dir(), '{0}_{1}.json'.format(manual.meta.manual, manual.meta.volume))
     print('saving to {0} ...'.format(file_name), end=' ')
     content = json.dumps(manual, sort_keys=True, indent=2, cls=TAEncoder)
     write_file(file_name, content)
