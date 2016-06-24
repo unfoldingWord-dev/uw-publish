@@ -325,7 +325,10 @@ class TAArticle(object):
             'id': self.slug,
             'ref': 'vol{0}/{1}/{2}'.format(self.yaml['volume'], self.yaml['manual'], self.slug),
             'text': self.markdown,
-            'title': self.yaml['title']
+            'title': self.yaml['title'],
+            'question': self.yaml['question'],
+            'recommend': self.yaml['recommended'],
+            'depend': self.yaml['dependencies']
         }
 
         return return_val
