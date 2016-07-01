@@ -31,7 +31,7 @@ else:
 download_dir = ''
 
 
-def main(git_repo):
+def main(git_repo, tag):
     global download_dir
 
     # clean up the git repo url
@@ -45,7 +45,7 @@ def main(git_repo):
     download_dir = '/tmp/{0}'.format(git_repo.rpartition('/')[2])
     make_dir(download_dir)
     downloaded_file = '{0}/{1}.zip'.format(download_dir, git_repo.rpartition('/')[2])
-    file_to_download = join_url_parts(git_repo, 'archive/master.zip')
+    file_to_download = join_url_parts(git_repo, 'archive/' + tag + '.zip')
     metadata_obj = None
     content_dir = None
     toc_obj = None
@@ -159,6 +159,8 @@ if __name__ == '__main__':
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-r', '--gitrepo', dest='gitrepo', default=False,
                         required=True, help='Git repository where the source can be found.')
+    parser.add_argument('-t', '--tag', dest='tag', default='master',
+                        required=False, help='Branch or tag to use as the source. Default is master.')
 
     args = parser.parse_args(sys.argv[1:])
 
@@ -168,7 +170,7 @@ if __name__ == '__main__':
 
     try:
         print_ok('STARTING: ', 'publishing TA repository.')
-        main(args.gitrepo)
+        main(args.gitrepo, args.tag)
         print_ok('ALL FINISHED: ', 'publishing TA repository.')
         print_notice('Don\'t forget to notify the interested parties.')
 

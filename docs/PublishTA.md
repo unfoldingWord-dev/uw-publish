@@ -22,9 +22,9 @@
     ```
     sudo SSH_AUTH_SOCK=$SSH_AUTH_SOCK bash
     ```
-1. Run this command one time for each repository. Watch for **WARNING** and **ERROR** messages that need your attention.
+1. Run this command one time for each repository. Watch for **WARNING** and **ERROR** messages that need your attention. The `-t v5` flag tells the script to use the commit tagged "v5".
     ```
-    python execute.py publish_ta -r https://git.door43.org/Door43/en-ta-intro
+    python execute.py publish_ta -r https://git.door43.org/Door43/en-ta-intro -t v5
     ```
 1. Copy the JSON files output by the above command to the API folder.
     ```
