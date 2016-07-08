@@ -1,8 +1,12 @@
 from __future__ import print_function, unicode_literals
+import codecs
 from datetime import datetime
 import os
+from json import JSONEncoder
+
 import chapters_and_frames
 from general_tools.file_utils import load_json_object
+from app_code.util import app_utils
 
 
 class OBSStatus(object):
@@ -36,7 +40,7 @@ class OBSChapter(object):
         """
         # deserialize
         if json_obj:
-            self.__dict__ = json_obj
+            self.__dict__ = json_obj  # type: dict
 
         else:
             self.frames = []
@@ -50,6 +54,16 @@ class OBSChapter(object):
         :returns list<str>
         """
         errors = []
+
+        if not self.title:
+            msg = 'Title not found: {0}'.format(self.number)
+            print(msg)
+            errors.append(msg)
+
+        if not self.ref:
+            msg = 'Ref not found: {0}'.format(self.number)
+            print(msg)
+            errors.append(msg)
 
         chapter_index = int(self.number) - 1
 
@@ -80,6 +94,13 @@ class OBSChapter(object):
                     errors.append(msg)
 
         return errors
+
+    def __getitem__(self, item):
+        if item in self.__dict__:
+            return self.__dict__[item]
+
+    def __str__(self):
+        return self.__class__.__name__ + ' ' + self.number
 
 
 class OBS(object):
@@ -116,7 +137,10 @@ class OBS(object):
         errors = []
 
         for chapter in self.chapters:
-            obs_chapter = OBSChapter(chapter)
+            if type(chapter) is OBSChapter:
+                obs_chapter = chapter
+            else:
+                obs_chapter = OBSChapter(chapter)
             errors = errors + obs_chapter.get_errors()
 
         if len(errors) == 0:
@@ -124,3 +148,31 @@ class OBS(object):
             return True
         else:
             return False
+
+    @staticmethod
+    def load_static_json_file(file_name):
+        file_name = os.path.join(app_utils.get_static_dir(), file_name)
+        return load_json_object(file_name, {})
+
+    @staticmethod
+    def get_readme_text():
+        file_name = os.path.join(app_utils.get_static_dir(), 'obs_readme.md')
+        with codecs.open(file_name, 'r', encoding='utf-8') as in_file:
+            return in_file.read()
+
+    @staticmethod
+    def get_front_matter():
+        return OBS.load_static_json_file('obs-front-matter.json')
+
+    @staticmethod
+    def get_back_matter():
+        return OBS.load_static_json_file('obs-back-matter.json')
+
+    @staticmethod
+    def get_status():
+        return OBS.load_static_json_file('obs-status.json')
+
+
+class OBSEncoder(JSONEncoder):
+    def default(self, o):
+        return o.__dict__

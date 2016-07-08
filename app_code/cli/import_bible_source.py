@@ -22,28 +22,26 @@ import re
 import shutil
 import sys
 import datetime
-
 from uw.update_catalog import update_catalog
-
 from app_code.bible.content import Book, Chapter, Chunk
-from general_tools.file_utils import unzip, make_dir
+from general_tools.file_utils import unzip, write_file
 from general_tools.url_utils import download_file, get_url
 from app_code.cli.api_publish import api_publish
-
 
 # remember these so we can delete them
 downloaded_file = ''
 unzipped_dir = ''
 
-chunk_url = 'https://api.unfoldingword.org/ts/txt/2/{0}/en/ulb/chunks.json'
 out_template = '/var/www/vhosts/api.unfoldingword.org/httpdocs/{0}/txt/1/{0}-{1}'
 
 s5_re = re.compile(r'\\s5\s*')
 nl_re = re.compile(r'\n{2,}')
 
 # TODO: change these to point to the API when it is available
-vrs_file = 'https://raw.githubusercontent.com/unfoldingWord-dev/uw-api/develop/static/versification/ufw/ufw.vrs'
-book_file = 'https://raw.githubusercontent.com/unfoldingWord-dev/uw-api/develop/static/versification/ufw/books-en.json'
+api_root = 'https://raw.githubusercontent.com/unfoldingWord-dev/uw-api/develop/static'
+vrs_file = api_root + '/versification/ufw/ufw.vrs'
+book_file = api_root + '/versification/ufw/books-en.json'
+chunk_url = api_root + '/versification/ufw/chunks/{0}.json'
 
 
 def main(resource, lang, slug, name, checking, contrib, ver, check_level,
@@ -132,7 +130,7 @@ def main(resource, lang, slug, name, checking, contrib, ver, check_level,
                          "version": ver
                          }
               }
-    write_json('{0}/status.json'.format(out_dir), status)
+    write_file('{0}/status.json'.format(out_dir), status)
 
     print('Publishing to the API...')
     with api_publish(out_dir) as api:
@@ -198,27 +196,12 @@ def get_chunks(book):
     if not chunk_str:
         raise Exception('Could not load chunks for ' + book.book_id)
 
-    for chunk in json.loads(chunk_str):
-        book.chunks.append(Chunk(chunk))
+    chunks_obj = json.loads(chunk_str)
 
-
-def write_json(out_file, p):
-    """
-    Simple wrapper to write a file as JSON.
-    :param out_file:
-    :param p:
-    """
-    make_dir(out_file.rsplit('/', 1)[0])
-    f = codecs.open(out_file, 'w', encoding='utf-8')
-    f.write(json.dumps(p, sort_keys=True))
-    f.close()
-
-
-def write_file(f, content):
-    make_dir(f.rpartition('/')[0])
-    out = codecs.open(f, encoding='utf-8', mode='w')
-    out.write(content)
-    out.close()
+    # chunk it
+    for chapter in chunks_obj:
+        for first_verse in chapter['first_verses']:
+            book.chunks.append(Chunk(chapter['chapter'], first_verse))
 
 
 if __name__ == '__main__':

@@ -32,6 +32,10 @@ class Book(object):
         else:
             print('Verifying ' + self.book_id)
 
+        # check for git conflicts
+        if '<<<< HEAD' in self.usfm:
+            self.append_error('There is a Git conflict header in ' + self.name)
+
         # split into chapters
         self.check_chapters(self.chapter_re.split(self.usfm))
 
@@ -222,16 +226,10 @@ class Chapter(object):
 
 
 class Chunk(object):
-    def __init__(self, chunk_obj):
-        chunk_id = chunk_obj['id']
-        split_id = chunk_id.split('-')
-        if len(split_id) != 2:
-            raise SyntaxError('Invalid chunk ID: ' + chunk_id)
+    def __init__(self, chapter, first_verse):
+        self.chunk_id = str(chapter).zfill(2) + '-' + str(first_verse).zfill(2)
+        self.chapter_num = chapter
+        self.first_verse = first_verse
 
-        self.chapter_num = int(split_id[0])
-        self.first_verse = int(chunk_obj['firstvs'])
-
-        if 'lastvs' in chunk_obj:
-            self.last_verse = int(chunk_obj['lastvs'])
-        else:
-            self.last_verse = 0
+    def __str__(self):
+        return self.chunk_id

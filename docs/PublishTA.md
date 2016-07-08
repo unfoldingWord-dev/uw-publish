@@ -1,30 +1,39 @@
 # Steps for Publishing translationAcademy
 
-1. Update some records in the tD database.
-    ```
-    delete from publishing_resourcedocument where publish_request_id = 81;
-    update publishing_publishrequest set approved_at = null where id = 81;
-    ```
-1. Run tD.
-1. Approve publish request #81. This will gather the Door43 pages and create a JSON record.
-1. Select the JSON data you just created.
-    ````
-    select json_data from publishing_resourcedocument where publish_request_id = 81;
-    ````
-1. Past this data into `ta-en.json` and reformat to make it more readable.
-1. Update the version number and any other fields in the JSON `meta` section.
-1. FTP to `us.door43.org`.
-1. On `us.door43.org`:
+**Updated for tA version 5**
+
+#### These are the repositories used as source for translationAcademy
+
+* https://git.door43.org/Door43/en-ta-intro
+* https://git.door43.org/Door43/en-ta-translate-vol1
+* https://git.door43.org/Door43/en-ta-translate-vol2
+* https://git.door43.org/Door43/en-ta-process
+* https://git.door43.org/Door43/en-ta-checking-vol1
+* https://git.door43.org/Door43/en-ta-checking-vol2
+* https://git.door43.org/Door43/en-ta-audio
+* https://git.door43.org/Door43/en-ta-gl
+
+
+#### These are the instructions
+
+1. Make sure the `meta.yaml` file in each repository is up-to-date. Pay attention to the version numbers and publish date.
+1. Move the files from the previous version of tA to `/var/www/vhosts/api.unfoldingword.org/httpdocs/ta/txt/1/en/history/`.
+1. Switch to sudo shell:
     ```
     sudo SSH_AUTH_SOCK=$SSH_AUTH_SOCK bash
-    cd /var/www/vhosts/api.unfoldingword.org/ta/txt/1/en
-    rm ta-en.json
-    mv /home/phopper/ta-en.json ta-en.json
-    chown syncthing:syncthing ta-en.json
-    # copy to the history directory,
-    # set v## to the current version number
-    cp ta-en.json history/ta-en.v##.json
-    exit
+    ```
+1. Run this command one time for each repository. Watch for **WARNING** and **ERROR** messages that need your attention. The `-t v5` flag tells the script to use the commit tagged "v5".
+    ```
+    python execute.py publish_ta -r https://git.door43.org/Door43/en-ta-intro -t v5
+    ```
+1. Copy the JSON files output by the above command to the API folder.
+    ```
+    cp output/{audio_2.json,checking_1.json,checking_2.json,gateway_3.json,intro_1.json,process_1.json,translate_1.json,translate_2.json} \
+    /var/www/vhosts/api.unfoldingword.org/httpdocs/ta/txt/1/en/
+    ```
+1. Set file permissions.
+    ```
+    chown -R syncthing:syncthing /var/www/vhosts/api.unfoldingword.org/httpdocs/ta/txt/1/en/
     ```
 1. In the `unfoldingWord.github.io` repository, update `_includes/ta_body.html` with the correct version number and PDF file name.
 1. Commit the changes to the `master` branch and push to origin. This will update the `test.unfoldingword.org` site.
