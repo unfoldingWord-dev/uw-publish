@@ -1,12 +1,13 @@
 from __future__ import print_function, unicode_literals
 import codecs
+import re
 from datetime import datetime
 import os
 from json import JSONEncoder
-
 import chapters_and_frames
 from general_tools.file_utils import load_json_object
 from app_code.util import app_utils
+from app_code.util.languages import Language
 
 
 class OBSStatus(object):
@@ -31,6 +32,9 @@ class OBSStatus(object):
             self.source_text_version = ''
             self.version = ''
 
+    def __contains__(self, item):
+        return item in self.__dict__
+
 
 class OBSChapter(object):
     def __init__(self, json_obj=None):
@@ -43,7 +47,7 @@ class OBSChapter(object):
             self.__dict__ = json_obj  # type: dict
 
         else:
-            self.frames = []
+            self.frames = []  # type: list<dict>
             self.number = ''
             self.ref = ''
             self.title = ''
@@ -76,7 +80,7 @@ class OBSChapter(object):
             frame_id = self.number.zfill(2) + '-' + str(x).zfill(2)
 
             # get the next frame
-            frame = next((f for f in self.frames if f['id'] == frame_id), None)
+            frame = next((f for f in self.frames if f['id'] == frame_id), None)  # type: dict
             if not frame:
                 msg = 'Frame not found: {0}'.format(frame_id)
                 print(msg)
@@ -161,16 +165,70 @@ class OBS(object):
             return in_file.read()
 
     @staticmethod
-    def get_front_matter():
-        return OBS.load_static_json_file('obs-front-matter.json')
+    def get_front_matter(pages_dir, lang_code, today_str):
+        obs_name_re = re.compile(r'\| (.*)\*\*', re.UNICODE)
+        tag_line_re = re.compile(r'\n\*\*.*openbiblestories', re.UNICODE | re.DOTALL)
+        link_re = re.compile(r'\[\[.*?\]\]', re.UNICODE)
+
+        return_val = OBS.load_static_json_file('obs-front-matter.json')
+        return_val['language'] = lang_code
+        return_val['date_modified'] = today_str
+
+        front_path = os.path.join(pages_dir, lang_code, 'obs', 'front-matter.txt')
+        if os.path.exists(front_path):
+
+            with codecs.open(front_path, 'r', encoding='utf-8') as in_file:
+                front = in_file.read()
+
+            for l in link_re.findall(front):
+                if '|' in l:
+                    clean_url = l.split('|')[1].replace(']', '')
+                else:
+                    clean_url = l.replace(']', '').replace('[', '')
+                front = front.replace(l, clean_url)
+
+            return_val['front-matter'] = front
+
+            obs_name_se = obs_name_re.search(front)
+            if obs_name_se:
+                return_val['name'] = obs_name_se.group(1)
+
+            tag_line_se = tag_line_re.search(front)
+            if tag_line_se:
+                return_val['tagline'] = tag_line_se.group(0).split('**')[1].strip()
+
+        return return_val
 
     @staticmethod
-    def get_back_matter():
-        return OBS.load_static_json_file('obs-back-matter.json')
+    def get_back_matter(pages_dir, lang_code, today_str):
+        return_val = OBS.load_static_json_file('obs-back-matter.json')
+        return_val['language'] = lang_code
+        return_val['date_modified'] = today_str
+
+        back_path = os.path.join(pages_dir, lang_code, 'obs', 'back-matter.txt')
+        if os.path.exists(back_path):
+            with codecs.open(back_path, 'r', encoding='utf-8') as in_file:
+                back = in_file.read()
+
+            return_val['back-matter'] = back
+
+        return return_val
 
     @staticmethod
     def get_status():
         return OBS.load_static_json_file('obs-status.json')
+
+    @staticmethod
+    def load_lang_strings():
+        langs = Language.load_languages()
+        return_val = {}
+        if not langs:
+            return return_val
+
+        for lang_obj in langs:  # :type Language
+            return_val[lang_obj.lc] = lang_obj.ln
+
+        return return_val
 
 
 class OBSEncoder(JSONEncoder):
