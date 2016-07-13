@@ -22,6 +22,7 @@ from general_tools.print_utils import print_error, print_ok, print_notice
 from general_tools.url_utils import join_url_parts, download_file
 from app_code.cli.obs_published_langs import ObsPublishedLangs
 from app_code.obs.obs_classes import OBSStatus, OBS, OBSChapter, OBSEncoder
+from uw.update_catalog import update_catalog
 import sys
 import os
 
@@ -52,7 +53,7 @@ def main(git_repo, tag):
         git_repo = git_repo[:-1]
 
     # initialize some variables
-    today = str(datetime.date.today())
+    today = ''.join(str(datetime.date.today()).rsplit('-')[0:3])  # str(datetime.date.today())
     download_dir = '/tmp/{0}'.format(git_repo.rpartition('/')[2])
     make_dir(download_dir)
     downloaded_file = '{0}/{1}.zip'.format(download_dir, git_repo.rpartition('/')[2])
@@ -160,6 +161,11 @@ def main(git_repo, tag):
 
     cat_json = json.dumps(catalog, sort_keys=True, cls=OBSEncoder)
     write_file(cat_path, cat_json)
+
+    # update the catalog
+    print_ok('STARTING: ', 'updating the catalogs.')
+    update_catalog()
+    print_ok('FINISHED: ', 'updating the catalogs.')
 
 
 def export_to_api(lang, status, today, cur_json):
