@@ -22,8 +22,18 @@ class Book(object):
         self.validation_errors = []  # type: list<str>
         self.header_usfm = ''        # type: str
 
+    def number_string(self):
+        return str(self.number).zfill(2)
+
     def set_usfm(self, new_usfm):
         self.usfm = new_usfm.replace('\r\n', '\n')
+
+    def build_usfm_from_chapters(self):
+        self.usfm = self.header_usfm
+
+        self.chapters.sort(key=lambda c: c.number)
+        for chapter in self.chapters:
+            self.usfm += "\n\n\\c {0}\n{1}".format(chapter.number, chapter.usfm)
 
     def verify_chapters_and_verses(self, same_line=False):
 
@@ -91,8 +101,13 @@ class Book(object):
 
         # go to the first verse marker
         current_cv_index = 0
-        while verse_blocks[current_cv_index][:2] != '\\v':
+        while current_cv_index < len(verse_blocks) and verse_blocks[current_cv_index][:2] != '\\v':
             current_cv_index += 1
+
+        # are all the verse markers missing?
+        if current_cv_index >= len(verse_blocks):
+            self.append_error('All verse markers are missing for ' + self.name + ' ' + str(found_chapter.number))
+            return
 
         # verses should be sequential, starting at 1 and ending at found_chapter.expected_max_verse_number
         while current_cv_index < len(verse_blocks):
@@ -124,6 +139,12 @@ class Book(object):
                     last_verse = self.check_this_verse(found_chapter, verse_num, last_verse, processed_verses)
 
                 current_cv_index += 2
+
+        # are there verses missing from the end
+        if last_verse < found_chapter.expected_max_verse_number:
+            self.append_error('Verses ' + str(last_verse + 1) + ' through ' +
+                              str(found_chapter.expected_max_verse_number) + ' for ' + self.name + ' ' +
+                              str(found_chapter.number) + ' are missing.')
 
     def check_this_verse(self, found_chapter, verse_num, last_verse, processed_verses):
 

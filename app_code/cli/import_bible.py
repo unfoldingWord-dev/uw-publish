@@ -13,7 +13,6 @@
 from __future__ import print_function, unicode_literals
 import argparse
 import codecs
-import json
 import os
 import re
 import shutil
@@ -22,10 +21,10 @@ import datetime
 from glob import glob
 from general_tools.print_utils import print_error, print_ok, print_notice
 from uw.update_catalog import update_catalog
-from app_code.bible.bible_classes import BibleMetaData
-from app_code.bible.content import Book, Chapter, Chunk
+from app_code.bible.bible_classes import BibleMetaData, Bible
+from app_code.bible.content import Book
 from general_tools.file_utils import unzip, make_dir, write_file
-from general_tools.url_utils import download_file, get_url, join_url_parts
+from general_tools.url_utils import download_file, join_url_parts
 from app_code.cli.api_publish import api_publish
 
 if sys.version_info < (3, 0):
@@ -39,7 +38,7 @@ except ImportError:
     import urllib2
 
 
-# remember these so we can delete them
+# remember this so we can delete it
 download_dir = ''
 
 out_template = '/var/www/vhosts/api.unfoldingword.org/httpdocs/{0}/txt/1/{1}-{2}'
@@ -98,7 +97,6 @@ def main(git_repo, domain):
             try:
                 print('Reading the metadata...', end=' ')
                 metadata_obj = BibleMetaData(os.path.join(root, 'meta.json'))
-                download_file(file_to_download, downloaded_file)
             finally:
                 print('finished.')
 
@@ -119,7 +117,7 @@ def main(git_repo, domain):
         sys.exit(1)
 
     # get the versification data
-    vrs = get_versification(metadata_obj.versification)  # type: list<Book>
+    vrs = Bible.get_versification(metadata_obj.versification)  # type: list<Book>
     out_dir = out_template.format(domain, metadata_obj.slug, metadata_obj.lang)
 
     # walk through the usfm files
@@ -156,7 +154,7 @@ def main(git_repo, domain):
         book.verify_chapters_and_verses(True)
 
         # get chunks for this book
-        get_chunks(metadata_obj.versification, book)
+        Bible.chunk_book(metadata_obj.versification, book)
         book.apply_chunks()
 
         # produces something like '01-GEN.usfm'
@@ -208,61 +206,12 @@ def main(git_repo, domain):
     print_notice('Check {0} and do a git push'.format(out_dir))
 
 
-def get_versification(versification):
-    """
-    Get the versification file and parse it into book, chapter and verse information
-    :return: list<Book>
-    """
-    global vrs_file, book_file
-
-    # get the list of books
-    books = json.loads(get_url(book_file.format(versification)))
-
-    # get the versification file
-    raw = get_url(vrs_file.format(versification))
-    lines = [l for l in raw.replace('\r', '').split('\n') if l and l[0:1] != '#']
-
-    scheme = []
-    for key, value in iter(books.items()):
-
-        book = Book(key, value[0], int(value[1]))
-
-        # find the key in the lines
-        for line in lines:
-            if line[0:3] == key:
-                chapters = line[4:].split()
-                for chapter in chapters:
-                    parts = chapter.split(':')
-                    book.chapters.append(Chapter(int(parts[0]), int(parts[1])))
-                scheme.append(book)
-                break
-
-    return scheme
-
-
 def get_re(text, regex):
     se = regex.search(text)
     if se:
         return se.group(1).strip()
 
     return None
-
-
-def get_chunks(versification, book):
-    """
-    :param versification:
-    :type book: Book
-    """
-    global chunk_url
-
-    chunk_str = get_url(chunk_url.format(versification, book.book_id.lower()))
-    if not chunk_str:
-        raise Exception('Could not load chunks for ' + book.book_id)
-
-    # chunk it
-    for chapter in json.loads(chunk_str):
-        for first_verse in chapter['first_verses']:
-            book.chunks.append(Chunk(chapter['chapter'], first_verse))
 
 
 if __name__ == '__main__':
