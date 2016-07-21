@@ -51,6 +51,8 @@ class Book(object):
 
     def check_chapters(self, blocks):
 
+        self.header_usfm = ''
+
         # find the first chapter marker, should be the second block
         # the first block should be everything before the first chapter marker
         current_index = 0
@@ -89,7 +91,7 @@ class Book(object):
                     self.check_verses(found_chapter, self.verse_re.split(blocks[current_index + 1]))
 
                     # remember for later
-                    found_chapter.usfm += blocks[current_index] + '\n' + blocks[current_index + 1] + '\n'
+                    found_chapter.usfm = blocks[current_index] + '\n' + blocks[current_index + 1] + '\n'
 
             # increment the counter
             current_index += 2
