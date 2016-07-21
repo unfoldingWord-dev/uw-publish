@@ -193,7 +193,8 @@ def export_to_api(lang, status, today, cur_json):
 
     unfolding_word_lang_dir = os.path.join(unfoldingWord_dir, lang)
     if 'checking_level' in status and 'publish_date' in status:
-        if status.checking_level in ['1', '2', '3'] and status.publish_date == str(datetime.date.today()):
+        if status.checking_level in ['1', '2', '3'] and \
+                (status.publish_date == str(datetime.date.today()) or status.publish_date == today):
 
             front_json = OBS.get_front_matter(pages, lang, today)
             back_json = OBS.get_back_matter(pages, lang, today)
