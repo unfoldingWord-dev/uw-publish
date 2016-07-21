@@ -179,8 +179,6 @@ def main(git_repo, tag, domain):
     write_file(status_file, status_json)
     print('finished')
 
-    exit()
-
     # let the API know it is there
     print('Publishing to the API...')
     with api_publish(out_dir) as api:
