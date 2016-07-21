@@ -16,6 +16,7 @@ import glob
 import json
 import shutil
 import datetime
+import subprocess
 from general_tools.file_utils import make_dir, unzip, load_json_object, write_file
 from general_tools.git_wrapper import *
 from general_tools.print_utils import print_error, print_ok, print_notice
@@ -42,7 +43,7 @@ lang_cat = None
 github_org = None
 
 
-def main(git_repo, tag):
+def main(git_repo, tag, no_pdf):
     global download_dir
 
     # clean up the git repo url
@@ -166,6 +167,62 @@ def main(git_repo, tag):
     print_ok('STARTING: ', 'updating the catalogs.')
     update_catalog()
     print_ok('FINISHED: ', 'updating the catalogs.')
+
+    if no_pdf:
+        return
+
+    tools_dir = '/var/www/vhosts/door43.org/tools'
+    if not os.path.isdir(tools_dir):
+        tools_dir = os.path.expanduser('~/Projects/tools')
+
+    # prompt if tools not found
+    if not os.path.isdir(tools_dir):
+        print_notice('The tools directory was not found. The PDF cannot be generated.')
+        return
+
+    create_pdf(tools_dir, lang, status.checking_level, status.version)
+
+
+def create_pdf(tools_dir, lang_code, checking_level, version):
+    global unfoldingWord_dir
+
+    # Create PDF via ConTeXt
+    try:
+        print_ok('Beginning: ', 'PDF generation.')
+        script_file = os.path.join(tools_dir, 'obs/book/pdf_export.sh')
+        out_dir = os.path.join(unfoldingWord_dir, lang_code)
+        make_dir(out_dir)
+        process = subprocess.Popen([script_file,
+                                    '-l', lang_code,
+                                    '-c', checking_level,
+                                    '-v', version,
+                                    '-o', out_dir],
+                                   shell=True,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+
+        # wait for the process to terminate
+        out, err = process.communicate()
+        exit_code = process.returncode
+        out = out.strip().decode('utf-8')
+        err = err.strip().decode('utf-8')
+
+        # the error message may be in stdout
+        if exit_code != 0:
+            if not err:
+                err = out
+                out = None
+
+        if err:
+            print_error(err, 2)
+
+        if out:
+            print('  ' + out)
+
+        print('  PDF subprocess finished with exit code {0}'.format(exit_code))
+
+    finally:
+        print_ok('Finished:', 'generating PDF.')
 
 
 def export_to_api(lang, status, today, cur_json):
@@ -333,7 +390,7 @@ if __name__ == '__main__':
 
     try:
         print_ok('STARTING: ', 'publishing OBS repository.')
-        main(args.gitrepo, args.tag)
+        main(args.gitrepo, args.tag, args.nopdf)
         print_ok('ALL FINISHED: ', 'publishing OBS repository.')
         print_notice('Don\'t forget to notify the interested parties.')
 
