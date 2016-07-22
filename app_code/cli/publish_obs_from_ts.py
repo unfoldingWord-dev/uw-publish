@@ -189,14 +189,17 @@ def create_pdf(tools_dir, lang_code, checking_level, version):
     # Create PDF via ConTeXt
     try:
         print_ok('Beginning: ', 'PDF generation.')
-        script_file = os.path.join(tools_dir, 'obs/book/pdf_export.sh')
         out_dir = os.path.join(unfoldingWord_dir, lang_code)
         make_dir(out_dir)
-        process = subprocess.Popen([script_file,
-                                    '-l', lang_code,
-                                    '-c', checking_level,
-                                    '-v', version,
-                                    '-o', out_dir],
+
+        script_file = os.path.join(tools_dir, 'obs/book/pdf_export.sh')
+        script_file += ' -l ' + lang_code
+        script_file += ' -c ' + checking_level
+        script_file += ' -v ' + version
+        script_file += ' -o "' + out_dir + '"'
+
+        process = subprocess.Popen([script_file, ],
+                                   cwd=tools_dir,
                                    shell=True,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
@@ -250,8 +253,7 @@ def export_to_api(lang, status, today, cur_json):
 
     unfolding_word_lang_dir = os.path.join(unfoldingWord_dir, lang)
     if 'checking_level' in status and 'publish_date' in status:
-        if status.checking_level in ['1', '2', '3'] and \
-                (status.publish_date == str(datetime.date.today()) or status.publish_date == today):
+        if status.checking_level in ['1', '2', '3']:
 
             front_json = OBS.get_front_matter(pages, lang, today)
             back_json = OBS.get_back_matter(pages, lang, today)
@@ -272,7 +274,7 @@ def export_to_api(lang, status, today, cur_json):
 
             print('finished.')
         else:
-            print_error('The `checking_level` or `publish_date` are invalid.')
+            print_error('The `checking_level` is invalid.')
             sys.exit(1)
     else:
         print_error('The status is missing `checking_level` or `publish_date`.')
