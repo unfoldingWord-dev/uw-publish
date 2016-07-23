@@ -180,7 +180,7 @@ def main(git_repo, tag, no_pdf):
         print_notice('The tools directory was not found. The PDF cannot be generated.')
         return
 
-    create_pdf(tools_dir, lang, status.checking_level, status.version)
+    # create_pdf(tools_dir, lang, status.checking_level, status.version)
 
 
 def create_pdf(tools_dir, lang_code, checking_level, version):
@@ -335,7 +335,7 @@ def update_language_catalog(lang, direction, status, date_modified, lang_dict, c
 def load_obs_chapters(content_dir):
     print('Reading OBS pages...', end=' ')
     chapters = []
-    img_url = 'https://api.unfoldingword.org/obs/jpg/1/en/360px/obs-en-{0}-{1}.jpg'
+    img_url = 'https://cdn.door43.org/obs/jpg/360px/obs-en-{0}.jpg'
     for story_num in range(1, 51):
         chapter_num = str(story_num).zfill(2)
         story_dir = os.path.join(content_dir, chapter_num)
@@ -359,7 +359,7 @@ def load_obs_chapters(content_dir):
             frame_id = chapter_num + '-' + os.path.splitext(os.path.basename(frame_file))[0]
 
             frame = {'id': frame_id,
-                     'img': img_url.format(chapter_num, frame_id),
+                     'img': img_url.format(frame_id),
                      'text': frame_text
                      }
 
