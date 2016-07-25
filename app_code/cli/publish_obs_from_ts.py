@@ -22,6 +22,7 @@ from general_tools.git_wrapper import *
 from general_tools.print_utils import print_error, print_ok, print_notice
 from general_tools.url_utils import join_url_parts, download_file
 from app_code.cli.obs_published_langs import ObsPublishedLangs
+from app_code.obs.export_to_tex import OBSTexExport
 from app_code.obs.obs_classes import OBSStatus, OBS, OBSChapter, OBSEncoder
 from uw.update_catalog import update_catalog
 import sys
@@ -171,61 +172,57 @@ def main(git_repo, tag, no_pdf):
     if no_pdf:
         return
 
-    tools_dir = '/var/www/vhosts/door43.org/tools'
-    if not os.path.isdir(tools_dir):
-        tools_dir = os.path.expanduser('~/Projects/tools')
-
-    # prompt if tools not found
-    if not os.path.isdir(tools_dir):
-        print_notice('The tools directory was not found. The PDF cannot be generated.')
-        return
-
-    # create_pdf(tools_dir, lang, status.checking_level, status.version)
+    create_pdf(lang, status.checking_level, status.version)
 
 
-def create_pdf(tools_dir, lang_code, checking_level, version):
-    global unfoldingWord_dir
+def create_pdf(lang_code, checking_level, version):
+    global download_dir, unfoldingWord_dir
 
     # Create PDF via ConTeXt
     try:
-        print_ok('Beginning: ', 'PDF generation.')
-        out_dir = os.path.join(unfoldingWord_dir, lang_code)
+        print_ok('BEGINNING: ', 'PDF generation.')
+        out_dir = os.path.join(download_dir, 'make_pdf')
         make_dir(out_dir)
 
-        script_file = os.path.join(tools_dir, 'obs/book/pdf_export.sh')
-        script_file += ' -l ' + lang_code
-        script_file += ' -c ' + checking_level
-        script_file += ' -v ' + version
-        script_file += ' -o "' + out_dir + '"'
+        # generate a tex file
+        print('Generating tex file...', end=' ')
+        tex_file = os.path.join(out_dir, '{0}.tex'.format(lang_code))
 
-        process = subprocess.Popen([script_file, ],
-                                   cwd=tools_dir,
-                                   shell=True,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
+        # make sure it doesn't already exist
+        if os.path.isfile(tex_file):
+            os.remove(tex_file)
 
-        # wait for the process to terminate
-        out, err = process.communicate()
-        exit_code = process.returncode
-        out = out.strip().decode('utf-8')
-        err = err.strip().decode('utf-8')
+        with OBSTexExport(lang_code, tex_file, 0, '360px', checking_level) as tex:
+            tex.run()
+        print('finished.')
 
-        # the error message may be in stdout
-        if exit_code != 0:
-            if not err:
-                err = out
-                out = None
+        # run context
+        print_notice('Running context - this may take several minutes.')
 
-        if err:
-            print_error(err, 2)
+        trackers = ','.join(['afm.loading', 'fonts.missing', 'fonts.warnings', 'fonts.names',
+                             'fonts.specifications', 'fonts.scaling', 'system.dump'])
 
-        if out:
-            print('  ' + out)
+        cmd = 'context --paranoid --batchmode --trackers={0} "{1}"'.format(trackers, tex_file)
 
-        print('  PDF subprocess finished with exit code {0}'.format(exit_code))
+        try:
+            subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT, cwd=out_dir)
+
+        except subprocess.CalledProcessError as e:
+            if e.message:
+                raise e
+        print('Finished running context.')
+
+        print('Copying PDF to API...', end=' ')
+        version = version.replace('.', '_')
+        if version[0:1] != 'v':
+            version = 'v' + version
+
+        pdf_file = os.path.join(unfoldingWord_dir, lang_code, 'obs-{0}-{1}.pdf'.format(lang_code, version))
+        shutil.copyfile(os.path.join(out_dir, '{0}.pdf'.format(lang_code)), pdf_file)
+        print('finished.')
 
     finally:
-        print_ok('Finished:', 'generating PDF.')
+        print_ok('FINISHED:', 'generating PDF.')
 
 
 def export_to_api(lang, status, today, cur_json):
