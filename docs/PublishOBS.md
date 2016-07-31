@@ -36,6 +36,8 @@
 1. Fork the repository on git.door43.org
 1. Create the `status.json` file in the repository root using `static/obs-status.json` as a template.
 1. Push your changed back to git.door43.org.
+1. Create `noto-LANG_CODE.tex` in `tools/obs/tex`.
+1. SSH to us.door43.org and `sudo SSH_AUTH_SOCK=$SSH_AUTH_SOCK bash`.
 1. Run `python execute.py publish_obs_from_ts -r https://git.door43.org/phillip-hopper/hmr_obs_text_obs`.
 1. Run `chown -R syncthing:syncthing /var/www/vhosts/api.unfoldingword.org/httpdocs/`.
 1. On pki.unfoldingword.org run `sudo /root/tools/uw/sign.py`.

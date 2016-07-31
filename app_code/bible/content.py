@@ -44,12 +44,14 @@ class Book(object):
 
         # check for git conflicts
         if '<<<< HEAD' in self.usfm:
-            self.append_error('There is a Git conflict header in ' + self.name)
+            self.append_error('There is a Git conflict header in ' + self.book_id)
 
         # split into chapters
         self.check_chapters(self.chapter_re.split(self.usfm))
 
     def check_chapters(self, blocks):
+
+        self.header_usfm = ''
 
         # find the first chapter marker, should be the second block
         # the first block should be everything before the first chapter marker
@@ -64,32 +66,32 @@ class Book(object):
             # parse the chapter number
             test_num = blocks[current_index][3:].strip()
             if not test_num.isdigit():
-                self.append_error('Invalid chapter number, ' + self.name + ' "' + test_num + '"')
+                self.append_error('Invalid chapter number, ' + self.book_id + ' "' + test_num + '"')
 
             # compare this chapter number to the numbers from the versification file
             try:
                 chapter_num = int(test_num)
             except ValueError:
-                self.append_error('Invalid chapter number, ' + self.name + ' "' + blocks[current_index] + '"')
+                self.append_error('Invalid chapter number, ' + self.book_id + ' "' + blocks[current_index] + '"')
                 continue
 
             found_chapter = next((c for c in self.chapters if c.number == chapter_num), None)  # type: Chapter
             if not found_chapter:
-                self.append_error('Invalid chapter number, ' + self.name + ' "' + test_num + '"')
+                self.append_error('Invalid chapter number, ' + self.book_id + ' "' + test_num + '"')
 
             else:
                 found_chapter.found = True
 
                 # make sure there is a chapter body
                 if current_index + 1 >= len(blocks):
-                    self.append_error('No verses found in ' + self.name + ' ' + str(found_chapter.number))
+                    self.append_error('No verses found in ' + self.book_id + ' ' + str(found_chapter.number))
 
                 else:
                     # split the chapter text into verses
                     self.check_verses(found_chapter, self.verse_re.split(blocks[current_index + 1]))
 
                     # remember for later
-                    found_chapter.usfm += blocks[current_index] + '\n' + blocks[current_index + 1] + '\n'
+                    found_chapter.usfm = blocks[current_index] + '\n' + blocks[current_index + 1] + '\n'
 
             # increment the counter
             current_index += 2
@@ -106,7 +108,7 @@ class Book(object):
 
         # are all the verse markers missing?
         if current_cv_index >= len(verse_blocks):
-            self.append_error('All verse markers are missing for ' + self.name + ' ' + str(found_chapter.number))
+            self.append_error('All verse markers are missing for ' + self.book_id + ' ' + str(found_chapter.number))
             return
 
         # verses should be sequential, starting at 1 and ending at found_chapter.expected_max_verse_number
@@ -119,7 +121,7 @@ class Book(object):
             if '-' in test_num:
                 nums = test_num.split('-')
                 if len(nums) != 2 or not nums[0].strip().isdigit() or not nums[1].strip().isdigit():
-                    self.append_error('Invalid verse bridge, ' + self.name + ' ' +
+                    self.append_error('Invalid verse bridge, ' + self.book_id + ' ' +
                                       str(found_chapter.number) + ':' + test_num)
 
                 else:
@@ -131,7 +133,7 @@ class Book(object):
                 if not test_num.isdigit():
 
                     # the verse number isn't a number
-                    self.append_error('Invalid verse number, ' + self.name + ' ' +
+                    self.append_error('Invalid verse number, ' + self.book_id + ' ' +
                                       str(found_chapter.number) + ':' + test_num)
 
                 else:
@@ -143,31 +145,31 @@ class Book(object):
         # are there verses missing from the end
         if last_verse < found_chapter.expected_max_verse_number:
             self.append_error('Verses ' + str(last_verse + 1) + ' through ' +
-                              str(found_chapter.expected_max_verse_number) + ' for ' + self.name + ' ' +
+                              str(found_chapter.expected_max_verse_number) + ' for ' + self.book_id + ' ' +
                               str(found_chapter.number) + ' are missing.')
 
     def check_this_verse(self, found_chapter, verse_num, last_verse, processed_verses):
 
         # is this verse number too large?
         if verse_num > found_chapter.expected_max_verse_number:
-            self.append_error('Invalid verse number, ' + self.name + ' ' +
+            self.append_error('Invalid verse number, ' + self.book_id + ' ' +
                               str(found_chapter.number) + ':' + str(verse_num))
 
         # look for gaps in the verse numbers
         while verse_num > last_verse + 1 and last_verse < found_chapter.expected_max_verse_number:
             # there is a verse missing
-            self.append_error('Verse not found, ' + self.name + ' ' +
+            self.append_error('Verse not found, ' + self.book_id + ' ' +
                               str(found_chapter.number) + ':' + str(last_verse + 1))
             last_verse += 1
 
         # look for out-of-order verse numbers
         if verse_num < last_verse:
-            self.append_error('Verse out-of-order, ' + self.name + ' ' +
+            self.append_error('Verse out-of-order, ' + self.book_id + ' ' +
                               str(found_chapter.number) + ':' + str(verse_num))
 
         # look for duplicate verse numbers
         if verse_num == last_verse or verse_num in processed_verses:
-            self.append_error('Duplicate verse, ' + self.name + ' ' +
+            self.append_error('Duplicate verse, ' + self.book_id + ' ' +
                               str(found_chapter.number) + ':' + str(verse_num))
 
         # remember for next time

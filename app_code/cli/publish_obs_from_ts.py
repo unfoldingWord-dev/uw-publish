@@ -16,11 +16,13 @@ import glob
 import json
 import shutil
 import datetime
+import subprocess
 from general_tools.file_utils import make_dir, unzip, load_json_object, write_file
 from general_tools.git_wrapper import *
 from general_tools.print_utils import print_error, print_ok, print_notice
 from general_tools.url_utils import join_url_parts, download_file
 from app_code.cli.obs_published_langs import ObsPublishedLangs
+from app_code.obs.export_to_tex import OBSTexExport
 from app_code.obs.obs_classes import OBSStatus, OBS, OBSChapter, OBSEncoder
 from uw.update_catalog import update_catalog
 import sys
@@ -42,7 +44,7 @@ lang_cat = None
 github_org = None
 
 
-def main(git_repo, tag):
+def main(git_repo, tag, no_pdf):
     global download_dir
 
     # clean up the git repo url
@@ -167,6 +169,61 @@ def main(git_repo, tag):
     update_catalog()
     print_ok('FINISHED: ', 'updating the catalogs.')
 
+    if no_pdf:
+        return
+
+    create_pdf(lang, status.checking_level, status.version)
+
+
+def create_pdf(lang_code, checking_level, version):
+    global download_dir, unfoldingWord_dir
+
+    # Create PDF via ConTeXt
+    try:
+        print_ok('BEGINNING: ', 'PDF generation.')
+        out_dir = os.path.join(download_dir, 'make_pdf')
+        make_dir(out_dir)
+
+        # generate a tex file
+        print('Generating tex file...', end=' ')
+        tex_file = os.path.join(out_dir, '{0}.tex'.format(lang_code))
+
+        # make sure it doesn't already exist
+        if os.path.isfile(tex_file):
+            os.remove(tex_file)
+
+        with OBSTexExport(lang_code, tex_file, 0, '360px', checking_level) as tex:
+            tex.run()
+        print('finished.')
+
+        # run context
+        print_notice('Running context - this may take several minutes.')
+
+        trackers = ','.join(['afm.loading', 'fonts.missing', 'fonts.warnings', 'fonts.names',
+                             'fonts.specifications', 'fonts.scaling', 'system.dump'])
+
+        cmd = 'context --paranoid --batchmode --trackers={0} "{1}"'.format(trackers, tex_file)
+
+        try:
+            subprocess.check_call(cmd, shell=True, stderr=subprocess.STDOUT, cwd=out_dir)
+
+        except subprocess.CalledProcessError as e:
+            if e.message:
+                raise e
+        print('Finished running context.')
+
+        print('Copying PDF to API...', end=' ')
+        version = version.replace('.', '_')
+        if version[0:1] != 'v':
+            version = 'v' + version
+
+        pdf_file = os.path.join(unfoldingWord_dir, lang_code, 'obs-{0}-{1}.pdf'.format(lang_code, version))
+        shutil.copyfile(os.path.join(out_dir, '{0}.pdf'.format(lang_code)), pdf_file)
+        print('finished.')
+
+    finally:
+        print_ok('FINISHED:', 'generating PDF.')
+
 
 def export_to_api(lang, status, today, cur_json):
     global unfoldingWord_dir, lang_cat, github_org, pages
@@ -193,8 +250,7 @@ def export_to_api(lang, status, today, cur_json):
 
     unfolding_word_lang_dir = os.path.join(unfoldingWord_dir, lang)
     if 'checking_level' in status and 'publish_date' in status:
-        if status.checking_level in ['1', '2', '3'] and \
-                (status.publish_date == str(datetime.date.today()) or status.publish_date == today):
+        if status.checking_level in ['1', '2', '3']:
 
             front_json = OBS.get_front_matter(pages, lang, today)
             back_json = OBS.get_back_matter(pages, lang, today)
@@ -215,7 +271,7 @@ def export_to_api(lang, status, today, cur_json):
 
             print('finished.')
         else:
-            print_error('The `checking_level` or `publish_date` are invalid.')
+            print_error('The `checking_level` is invalid.')
             sys.exit(1)
     else:
         print_error('The status is missing `checking_level` or `publish_date`.')
@@ -276,7 +332,7 @@ def update_language_catalog(lang, direction, status, date_modified, lang_dict, c
 def load_obs_chapters(content_dir):
     print('Reading OBS pages...', end=' ')
     chapters = []
-    img_url = 'https://api.unfoldingword.org/obs/jpg/1/en/360px/obs-en-{0}-{1}.jpg'
+    img_url = 'https://cdn.door43.org/obs/jpg/360px/obs-en-{0}.jpg'
     for story_num in range(1, 51):
         chapter_num = str(story_num).zfill(2)
         story_dir = os.path.join(content_dir, chapter_num)
@@ -300,7 +356,7 @@ def load_obs_chapters(content_dir):
             frame_id = chapter_num + '-' + os.path.splitext(os.path.basename(frame_file))[0]
 
             frame = {'id': frame_id,
-                     'img': img_url.format(chapter_num, frame_id),
+                     'img': img_url.format(frame_id),
                      'text': frame_text
                      }
 
@@ -333,7 +389,7 @@ if __name__ == '__main__':
 
     try:
         print_ok('STARTING: ', 'publishing OBS repository.')
-        main(args.gitrepo, args.tag)
+        main(args.gitrepo, args.tag, args.nopdf)
         print_ok('ALL FINISHED: ', 'publishing OBS repository.')
         print_notice('Don\'t forget to notify the interested parties.')
 
