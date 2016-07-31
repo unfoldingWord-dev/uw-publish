@@ -23,5 +23,5 @@ On pki.unfoldingword.org run
 
 * Run these commands locally:
     ```
-    cd ~/Projects/uw-web && make publish
+    cd ~/Projects/uw-web && git pull && make publish
     ```

@@ -38,6 +38,7 @@ download_dir = ''
 out_template = '/var/www/vhosts/api.unfoldingword.org/httpdocs/{0}/txt/1/{1}'
 
 verse_re = re.compile(r'\s+(\\v\s\d{1,3}[-,d]*)')
+chapter_re = re.compile(r'^(\\c\s\d{1,3}[-,d]*)')
 add_q_re = re.compile(r'\n\s+(\S+)')
 
 
@@ -134,7 +135,11 @@ def main(git_repo, tag, domain):
     # do basic checks
     print('Running USFM checks...', end=' ')
     book.verify_chapters_and_verses(True)
-    print('finished.')
+    if book.validation_errors:
+        print_error('These USFM errors must be corrected before publishing can continue.')
+        sys.exit(1)
+    else:
+        print('finished.')
 
     # insert paragraph markers
     print('Inserting paragraph markers...', end=' ')
@@ -195,6 +200,8 @@ def main(git_repo, tag, domain):
 
 
 def reformat_usfm(usfm_in):
+    global verse_re
+
     usfm_out = usfm_in.strip()
 
     # remove windows newlines
@@ -207,6 +214,12 @@ def reformat_usfm(usfm_in):
     usfm_out = verse_re.sub(r'\n\1', usfm_out)
 
     return usfm_out
+
+
+def remove_chapter_markers(usfm_in):
+    global chapter_re
+
+    return chapter_re.sub(r'', usfm_in)
 
 
 def read_chunked_files(book, content_dir, metadata_obj):
@@ -259,7 +272,7 @@ def read_chunked_files(book, content_dir, metadata_obj):
                 with codecs.open(file_name, 'r', 'utf-8-sig') as in_file:
                     chunk_usfm = in_file.read()
 
-                chapter.usfm += reformat_usfm(chunk_usfm) + "\n"
+                chapter.usfm += reformat_usfm(remove_chapter_markers(chunk_usfm)) + "\n"
 
     book.build_usfm_from_chapters()
     print('finished.')
