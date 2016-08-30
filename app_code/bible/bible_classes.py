@@ -6,8 +6,8 @@ from datetime import datetime
 from json import JSONEncoder
 from general_tools.file_utils import load_json_object
 from general_tools.url_utils import get_url
-from app_code.bible import bible_paragraphs
-from app_code.bible.content import Book, Chapter, Chunk
+import bible_paragraphs
+import content
 from app_code.util import app_utils
 
 
@@ -67,7 +67,7 @@ class Bible(object):
         scheme = []
         for key, value in iter(books.items()):
 
-            book = Book(key, value[0], int(value[1]))
+            book = content.Book(key, value[0], int(value[1]))
 
             # find the key in the lines
             for line in lines:
@@ -75,7 +75,7 @@ class Bible(object):
                     chapters = line[4:].split()
                     for chapter in chapters:
                         parts = chapter.split(':')
-                        book.chapters.append(Chapter(int(parts[0]), int(parts[1])))
+                        book.chapters.append(content.Chapter(int(parts[0]), int(parts[1])))
                     scheme.append(book)
                     break
 
@@ -105,7 +105,7 @@ class Bible(object):
         # chunk it
         for chapter in json.loads(chunk_str):
             for first_verse in chapter['first_verses']:
-                book.chunks.append(Chunk(chapter['chapter'], first_verse))
+                book.chunks.append(content.Chunk(chapter['chapter'], first_verse))
 
     @staticmethod
     def insert_paragraph_markers(book):
@@ -201,3 +201,24 @@ class BibleStatus(object):
 class BibleEncoder(JSONEncoder):
     def default(self, o):
         return o.__dict__
+
+
+class USFM(object):
+    tags = ['id', 'ide', 'id_token', 'h', 'toc', 'toc1', 'toc2', 'toc3', 'mt', 'mt1', 'mt2', 'mt3',
+            'ms', 'ms1', 'ms2', 'mr', 's', 's1', 's2', 's3', 's4', 's5', 'r', 'pi2', 'pi', 'p',
+            'mi', 'b', 'c', 'cas', 'cae', 'cl', 'v', 'wjs', 'wje', 'nds', 'nde', 'q', 'q1', 'q2',
+            'q3', 'q4', 'qa', 'qac', 'qc', 'qm', 'qm1', 'qm2', 'qm3', 'qr', 'qs', 'qs*', 'qss', 'qse',
+            'qts', 'qte', 'nb', 'm', 'f', 'f*', 'fs', 'fr', 'fre', 'fk', 'ft', 'fq', 'fqa', 'fqb',
+            'fe', 'xs', 'xdcs', 'xdce', 'xo', 'xt', 'xe', 'ist', 'ien', 'bds', 'bde', 'bdits', 'bdite',
+            'li', 'li1', 'li2', 'li3', 'li4', 'd', 'sp', 'adds', 'adde', 'tls', 'tle', 'is1', 'ip',
+            'iot', 'io1', 'io2', 'ior_s', 'ior_e', 'bk_s', 'bk_e', 'scs', 'sce', 'pbr', 'rem', 'tr',
+            'th1', 'th2', 'th3', 'th4', 'th5', 'th6', 'thr1', 'thr2', 'thr3', 'thr4', 'thr5', 'thr6',
+            'tc1', 'tc2', 'tc3', 'tc4', 'tc5', 'tc6', 'tcr1', 'tcr2', 'tcr3', 'tcr4', 'tcr5',
+            'tcr6', 'textBlock']
+
+    @staticmethod
+    def is_valid_tag(tag):
+        if tag[0:1] == '\\':
+            return tag[1:] in USFM.tags
+
+        return tag in USFM.tags

@@ -1,10 +1,15 @@
 from __future__ import print_function, unicode_literals
 import re
+from general_tools.print_utils import print_error
+from bible_classes import USFM
 
 
 class Book(object):
     verse_re = re.compile(r'(\\v\s*[0-9\-]*\s+)', re.UNICODE)
     chapter_re = re.compile(r'(\\c\s*[0-9]*\s*\n)', re.UNICODE)
+    tag_re = re.compile(r'\s(\\\S+)\s', re.UNICODE)
+    bad_tag_re = re.compile(r'(\S\\\S+)\s', re.UNICODE)
+    tag_exceptions = ('\\f*', '\\fe*', '\\qs*')
 
     def __init__(self, book_id, name, number):
         """
@@ -48,6 +53,38 @@ class Book(object):
 
         # split into chapters
         self.check_chapters(self.chapter_re.split(self.usfm))
+
+    def verify_usfm_tags(self, same_line=False):
+
+        if same_line:
+            print('Checking USFM in ' + self.book_id + '... ', end=' ')
+        else:
+            print('Checking USFM in ' + self.book_id)
+
+        # split into chapters
+        chapters_usfm = self.chapter_re.split(self.usfm)
+        current_chapter = '\c 0'
+
+        for chapter_usfm in chapters_usfm:
+            if chapter_usfm[0:2] == '\c':
+                current_chapter = chapter_usfm.strip()
+            else:
+                # get all tags
+                matches = re.findall(self.tag_re, chapter_usfm)
+                for match in matches:
+                    if not USFM.is_valid_tag(match):
+
+                        # check the exceptions
+                        if not match.startswith(self.tag_exceptions):
+                            self.append_error('Invalid USFM tag in ' + current_chapter + ': ' + match)
+
+                # check for bad tags
+                matches = re.findall(self.bad_tag_re, chapter_usfm)
+                for match in matches:
+
+                    # check the exceptions
+                    if not match.endswith(self.tag_exceptions):
+                        self.append_error('Invalid USFM tag in ' + current_chapter + ': ' + match)
 
     def check_chapters(self, blocks):
 
@@ -182,7 +219,7 @@ class Book(object):
 
     def append_error(self, message, prefix='** '):
 
-        print(prefix + message)
+        print_error(prefix + message)
         self.validation_errors.append(message)
 
     def apply_chunks(self):

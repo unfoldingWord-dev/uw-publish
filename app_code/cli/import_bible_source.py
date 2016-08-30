@@ -22,6 +22,8 @@ import re
 import shutil
 import sys
 import datetime
+
+from general_tools.print_utils import print_warning
 from uw.update_catalog import update_catalog
 from app_code.bible.content import Book, Chapter, Chunk
 from general_tools.file_utils import unzip, write_file
@@ -62,6 +64,7 @@ def main(resource, lang, slug, name, checking, contrib, ver, check_level,
     unzip(downloaded_file, unzipped_dir)
 
     books_published = {}
+    there_were_errors = False
 
     for root, dirs, files in os.walk(unzipped_dir):
 
@@ -73,7 +76,7 @@ def main(resource, lang, slug, name, checking, contrib, ver, check_level,
 
         # there are usfm files, which book is this?
         test_dir = root.rpartition('/')[2]
-        book = next((b for b in vrs if b.dir_name == test_dir), None)
+        book = next((b for b in vrs if b.dir_name == test_dir), None)  # type: Book
 
         if book:
             book_text = ''
@@ -92,7 +95,13 @@ def main(resource, lang, slug, name, checking, contrib, ver, check_level,
             book.set_usfm(book_text)
 
             # do basic checks
+            book.verify_usfm_tags()
             book.verify_chapters_and_verses()
+            if len(book.validation_errors) > 0:
+                there_were_errors = True
+
+            if there_were_errors:
+                continue
 
             # get chunks for this book
             get_chunks(book)
@@ -111,6 +120,10 @@ def main(resource, lang, slug, name, checking, contrib, ver, check_level,
                                                      'sort': str(book.number).zfill(2),
                                                      'desc': ''
                                                      }
+
+    if there_were_errors:
+        print_warning('There are errors you need to fix before continuing.')
+        exit()
 
     source_ver = ver
     if '.' in ver:
