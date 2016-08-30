@@ -40,7 +40,7 @@ nl_re = re.compile(r'\n{2,}')
 # TODO: change these to point to the API when it is available
 api_root = 'https://raw.githubusercontent.com/unfoldingWord-dev/uw-api/develop/static'
 vrs_file = api_root + '/versification/ufw/ufw.vrs'
-book_file = api_root + '/versification/ufw/books-en.json'
+book_file = api_root + '/versification/ufw/books.json'
 chunk_url = api_root + '/versification/ufw/chunks/{0}.json'
 
 
