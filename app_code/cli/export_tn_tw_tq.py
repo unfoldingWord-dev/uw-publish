@@ -21,6 +21,7 @@ import re
 import datetime
 
 from general_tools.file_utils import make_dir
+from general_tools.print_utils import print_ok, print_error
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -258,13 +259,10 @@ def run_kt(lang, date_today):
         kt = get_kt(f)
         if kt:
             key_terms.append(kt)
-    for i in key_terms:
-        try:
-            i['aliases'] = list(set([x for x in kt_aliases[i['id']]
-                                     if x != i['term']]))
-        except KeyError:
-            # this just means no aliases were found
-            pass
+    for i in key_terms:  # type: dict
+        if i['id'] in kt_aliases:
+            i['aliases'] = [x for x in kt_aliases[i['id']] if x != i['term']]
+
     key_terms.sort(key=lambda y: len(y['term']), reverse=True)
     key_terms.append({'date_modified': date_today, 'version': '3'})
     api_path = os.path.join(api_v2, 'bible', lang)
@@ -322,7 +320,7 @@ def save_tw(filepath, date_today, tw_book_dict):
 def run_cq(lang, date_today):
     cq_path = os.path.join(pages, lang, 'bible/questions/comprehension')
     for book in os.listdir(cq_path):
-        book_questions = []
+        book_questions = []  # type: list[dict]
         book_path = os.path.join(cq_path, book)
         if len(book) > 3:
             continue
@@ -353,7 +351,14 @@ def get_cq(f):
 
 def get_q_and_a(text):
     cq = []
+    first_line = None
     for line in text.splitlines():
+        line = line.strip()
+
+        if not first_line and line.startswith('==='):
+            first_line = line
+            continue
+
         if line.startswith('\n') or \
                 line == '' or \
                 line.startswith('~~') or \
@@ -372,7 +377,7 @@ def get_q_and_a(text):
             cq.append(item)
             continue
         else:
-            print(line)
+            print_error('tQ error in {0}: {1}'.format(first_line, line))
     return cq
 
 
@@ -400,3 +405,5 @@ if __name__ == '__main__':
     run_tn('en', today)
     run_kt('en', today)
     run_cq('en', today)
+    print_ok('Finished: ', 'exported tN, tW, and tQ.')
+
