@@ -44,7 +44,7 @@ cf_re = re.compile(r'See also.*', re.UNICODE)
 examples_re = re.compile(r'===== Examples from the Bible stories.*', re.UNICODE | re.DOTALL)
 ex_txt_re = re.compile(r'\*\* (.*)', re.UNICODE)
 fr_id_re = re.compile(r'[0-9][0-9][0-9]?/[0-9][0-9][0-9]?', re.UNICODE)
-tN_re = re.compile(r'==== Translation Notes.*', re.UNICODE | re.DOTALL)
+tN_re = re.compile(r'==== translationNotes.*', re.UNICODE | re.DOTALL)
 it_re = re.compile(r'==== translationWords: ====(.*?)====', re.UNICODE | re.DOTALL)
 tN_term_re = re.compile(r' \*\*(.*?)\*\*', re.UNICODE)
 tN_text_re = re.compile(r' ?[–-] ?(.*)', re.UNICODE)
@@ -171,7 +171,7 @@ def get_frame(f, book):
     frame['id'] = fr_id_re.search(f).group(0).strip().replace('/', '-')
 
     tn = get_tn(page)
-    if not tn:
+    if not tn and not f.endswith(('/00.txt', '/000.txt')):
         print('Notes not found for ' + f)
 
     frame['tn'] = tn
@@ -206,7 +206,9 @@ def get_tw_list(fr_id, page, book):
 def get_aliases(page, f):
     it_se = it_re.search(page)
     if not it_se:
-        print('Terms not found for {0}'.format(f))
+        if not f.endswith(('/00.txt', '/000.txt')):
+            print('Terms not found for {0}'.format(f))
+
         return
 
     text = it_se.group(1).strip()
@@ -403,7 +405,7 @@ def fix_refs(refs):
 if __name__ == '__main__':
     today = ''.join(str(datetime.date.today()).rsplit('-')[0:3])
     run_tn('en', today)
-    run_kt('en', today)
-    run_cq('en', today)
+    # run_kt('en', today)
+    # run_cq('en', today)
     print_ok('Finished: ', 'exported tN, tW, and tQ.')
 
