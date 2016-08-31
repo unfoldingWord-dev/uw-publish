@@ -248,6 +248,15 @@ def get_tn(page):
         except AttributeError:
             item_text = i
         item['text'] = get_html(item_text)
+
+        # do not include empty entries
+        if not item['ref']:
+            if not item['text']:
+                continue
+                
+            if item['text'].startswith('[[') and item['text'].endswith(']]'):
+                continue
+
         tn.append(item)
     return tn
 
