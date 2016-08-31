@@ -227,36 +227,36 @@ def get_tn(page):
         return tn
 
     text = tn_se.group(0)
-    for i in text.split('\n'):
-        if not i.strip() or \
-                'Comprehension Questions' in i or \
-                '>>]]**' in i or \
-                '<<]]**' in i or \
-                '====' in i or \
-                i.startswith(('{{tag>', '~~', '**[[', '\\\\')):
+    lines = text.split('\n')
+    found_first = False
+    for i in range(0, len(lines)):
+        line = lines[i]
+
+        if line.startswith('===='):
+            if found_first:
+                break
+            found_first = True
+
+        if not line.strip() or \
+                'Comprehension Questions' in line or \
+                '>>]]**' in line or \
+                '<<]]**' in line or \
+                '====' in line or \
+                line.startswith(('{{tag>', '~~', '**[[', '\\\\')):
             continue
 
         item = {'ref': ''}
-        tn_term_se = tN_term_re.search(i)
+        tn_term_se = tN_term_re.search(line)
         if tn_term_se:
             item['ref'] = tn_term_se.group(1)
-        tn_text_se = tN_text_re.search(i)
+        tn_text_se = tN_text_re.search(line)
         if not tn_text_se:
-            tn_text_se = tN_text_re2.search(i)
+            tn_text_se = tN_text_re2.search(line)
         try:
             item_text = tn_text_se.group(1).strip()
         except AttributeError:
-            item_text = i
+            item_text = line
         item['text'] = get_html(item_text)
-
-        # do not include empty entries
-        if not item['ref']:
-            if not item['text']:
-                continue
-                
-            if item['text'].startswith('[[') and item['text'].endswith(']]'):
-                continue
-
         tn.append(item)
     return tn
 
