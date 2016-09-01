@@ -266,7 +266,7 @@ def run_kt(lang, date_today):
             # this just means no aliases were found
             pass
     key_terms.sort(key=lambda y: len(y['term']), reverse=True)
-    key_terms.append({'date_modified': date_today, 'version': '2'})
+    key_terms.append({'date_modified': date_today, 'version': '3'})
     api_path = os.path.join(api_v2, 'bible', lang)
     write_json('{0}/terms.json'.format(api_path), key_terms)
 
@@ -298,7 +298,7 @@ def run_tn(lang, date_today):
                     frames.append(frame)
 
         frames.sort(key=lambda x: x['id'])
-        frames.append({'date_modified': date_today, 'version': '2'})
+        frames.append({'date_modified': date_today, 'version': '3'})
         write_json('{0}/notes.json'.format(api_path), frames)
         if book not in tw_dict:
             print('Terms not found for {0}'.format(book))
@@ -308,7 +308,7 @@ def run_tn(lang, date_today):
 
 
 def save_tw(filepath, date_today, tw_book_dict):
-    tw_cat = {'chapters': [], 'date_modified': date_today, 'version': '2'}
+    tw_cat = {'chapters': [], 'date_modified': date_today, 'version': '3'}
     for chp in tw_book_dict:
         tw_book_dict[chp].sort(key=lambda x: x['id'])
         entry = {'id': chp,
