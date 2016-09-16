@@ -1,11 +1,11 @@
 from __future__ import print_function, unicode_literals
 import re
 from general_tools.print_utils import print_error
-from bible_classes import USFM
+import bible_classes
 
 
 class Book(object):
-    verse_re = re.compile(r'(\\v\s*[0-9\-]*\s+)', re.UNICODE)
+    verse_re = re.compile(r'(\\v\s*[0-9-]*\s+)', re.UNICODE)
     chapter_re = re.compile(r'(\\c\s*[0-9]*\s*\n)', re.UNICODE)
     tag_re = re.compile(r'\s(\\\S+)\s', re.UNICODE)
     bad_tag_re = re.compile(r'(\S\\\S+)\s', re.UNICODE)
@@ -72,7 +72,7 @@ class Book(object):
                 # get all tags
                 matches = re.findall(self.tag_re, chapter_usfm)
                 for match in matches:
-                    if not USFM.is_valid_tag(match):
+                    if not bible_classes.USFM.is_valid_tag(match):
 
                         # check the exceptions
                         if not match.startswith(self.tag_exceptions):
