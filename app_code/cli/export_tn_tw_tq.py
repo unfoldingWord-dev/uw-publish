@@ -275,7 +275,7 @@ def run_kt(lang, date_today):
             i['aliases'] = [x for x in kt_aliases[i['id']] if x != i['term']]
 
     key_terms.sort(key=lambda y: len(y['term']), reverse=True)
-    key_terms.append({'date_modified': date_today, 'version': '3'})
+    key_terms.append({'date_modified': date_today, 'version': '4'})
     api_path = os.path.join(api_v2, 'bible', lang)
     write_json('{0}/terms.json'.format(api_path), key_terms)
 
@@ -307,7 +307,7 @@ def run_tn(lang, date_today):
                     frames.append(frame)
 
         frames.sort(key=lambda x: x['id'])
-        frames.append({'date_modified': date_today, 'version': '3'})
+        frames.append({'date_modified': date_today, 'version': '4'})
         write_json('{0}/notes.json'.format(api_path), frames)
         if book not in tw_dict:
             print('Terms not found for {0}'.format(book))
@@ -317,7 +317,7 @@ def run_tn(lang, date_today):
 
 
 def save_tw(filepath, date_today, tw_book_dict):
-    tw_cat = {'chapters': [], 'date_modified': date_today, 'version': '3'}
+    tw_cat = {'chapters': [], 'date_modified': date_today, 'version': '4'}
     for chp in tw_book_dict:
         tw_book_dict[chp].sort(key=lambda x: x['id'])
         entry = {'id': chp,
@@ -414,7 +414,12 @@ def fix_refs(refs):
 if __name__ == '__main__':
     today = ''.join(str(datetime.date.today()).rsplit('-')[0:3])
     run_tn('en', today)
+
+    # todo: 03 OCT 2016, need new script to publish tW from Gogs
     # run_kt('en', today)
+
+    # todo: 03 OCT 2016, need new script to publish tQ from Gogs
     # run_cq('en', today)
-    print_ok('Finished: ', 'exported tN, tW, and tQ.')
+
+    print_ok('Finished: ', 'exported tN.')
 

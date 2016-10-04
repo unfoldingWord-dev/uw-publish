@@ -33,6 +33,9 @@ On pki.unfoldingword.org run
 
     cd ~/Projects/uw-web && make publish
     
+### Create a new git release. 
+
+For an example see https://github.com/unfoldingWord-dev/door43.org/wiki/Content-Release-Structure
 
 ### Removing a Bible from bible.unfoldingword.org
 
