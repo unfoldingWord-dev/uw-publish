@@ -208,7 +208,7 @@ class USFM(object):
             'ms', 'ms1', 'ms2', 'mr', 's', 's1', 's2', 's3', 's4', 's5', 'r', 'pi2', 'pi', 'p',
             'mi', 'b', 'c', 'cas', 'cae', 'cl', 'v', 'wjs', 'wje', 'nds', 'nde', 'q', 'q1', 'q2',
             'q3', 'q4', 'qa', 'qac', 'qc', 'qm', 'qm1', 'qm2', 'qm3', 'qr', 'qs', 'qs*', 'qss', 'qse',
-            'qts', 'qte', 'nb', 'm', 'f', 'f*', 'fs', 'fr', 'fre', 'fk', 'ft', 'fq', 'fqa', 'fqb',
+            'qts', 'qte', 'nb', 'm', 'f', 'f*', 'fs', 'fr', 'fre', 'fk', 'ft', 'fq', 'fqa', 'fqa*', 'fqb',
             'fe', 'xs', 'xdcs', 'xdce', 'xo', 'xt', 'xe', 'ist', 'ien', 'bds', 'bde', 'bdits', 'bdite',
             'li', 'li1', 'li2', 'li3', 'li4', 'd', 'sp', 'adds', 'adde', 'tls', 'tle', 'is1', 'ip',
             'iot', 'io1', 'io2', 'ior_s', 'ior_e', 'bk_s', 'bk_e', 'scs', 'sce', 'pbr', 'rem', 'tr',
