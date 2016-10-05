@@ -43,9 +43,9 @@ def main(date_today, tag, version):
     global download_dir, tw_aliases
 
     repo = 'https://git.door43.org/Door43/en-tw'
-    download_dir = tempfile.mkdtemp(prefix='testTW_')
+    download_dir = tempfile.mkdtemp(prefix='tempTW_')
     download_url = join_url_parts(repo, 'archive', '{0}.zip'.format(tag))
-    downloaded_file = os.path.join(download_dir, 'tN.zip')
+    downloaded_file = os.path.join(download_dir, 'tW.zip')
 
     # download the repository
     try:
