@@ -21,6 +21,7 @@ import re
 import datetime
 
 from general_tools.file_utils import make_dir
+from general_tools.print_utils import print_ok, print_error
 
 base_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -43,7 +44,7 @@ cf_re = re.compile(r'See also.*', re.UNICODE)
 examples_re = re.compile(r'===== Examples from the Bible stories.*', re.UNICODE | re.DOTALL)
 ex_txt_re = re.compile(r'\*\* (.*)', re.UNICODE)
 fr_id_re = re.compile(r'[0-9][0-9][0-9]?/[0-9][0-9][0-9]?', re.UNICODE)
-tN_re = re.compile(r'==== Translation Notes.*', re.UNICODE | re.DOTALL)
+tN_re = re.compile(r'==== translationNotes.*', re.UNICODE | re.DOTALL)
 it_re = re.compile(r'==== translationWords: ====(.*?)====', re.UNICODE | re.DOTALL)
 tN_term_re = re.compile(r' \*\*(.*?)\*\*', re.UNICODE)
 tN_text_re = re.compile(r' ?[–-] ?(.*)', re.UNICODE)
@@ -170,7 +171,7 @@ def get_frame(f, book):
     frame['id'] = fr_id_re.search(f).group(0).strip().replace('/', '-')
 
     tn = get_tn(page)
-    if not tn:
+    if not tn and not f.endswith(('/00.txt', '/000.txt')):
         print('Notes not found for ' + f)
 
     frame['tn'] = tn
@@ -205,7 +206,9 @@ def get_tw_list(fr_id, page, book):
 def get_aliases(page, f):
     it_se = it_re.search(page)
     if not it_se:
-        print('Terms not found for {0}'.format(f))
+        if not f.endswith(('/00.txt', '/000.txt')):
+            print('Terms not found for {0}'.format(f))
+
         return
 
     text = it_se.group(1).strip()
@@ -224,26 +227,35 @@ def get_tn(page):
         return tn
 
     text = tn_se.group(0)
-    for i in text.split('\n'):
-        if not i.strip() or \
-                'Comprehension Questions' in i or \
-                '>>]]**' in i or \
-                '<<]]**' in i or \
-                '====' in i or \
-                i.startswith(('{{tag>', '~~', '**[[', '\\\\')):
+    lines = text.split('\n')
+    found_first = False
+    for i in range(0, len(lines)):
+        line = lines[i]
+
+        if line.startswith('===='):
+            if found_first:
+                break
+            found_first = True
+
+        if not line.strip() or \
+                'Comprehension Questions' in line or \
+                '>>]]**' in line or \
+                '<<]]**' in line or \
+                '====' in line or \
+                line.startswith(('{{tag>', '~~', '**[[', '\\\\')):
             continue
 
         item = {'ref': ''}
-        tn_term_se = tN_term_re.search(i)
+        tn_term_se = tN_term_re.search(line)
         if tn_term_se:
             item['ref'] = tn_term_se.group(1)
-        tn_text_se = tN_text_re.search(i)
+        tn_text_se = tN_text_re.search(line)
         if not tn_text_se:
-            tn_text_se = tN_text_re2.search(i)
+            tn_text_se = tN_text_re2.search(line)
         try:
             item_text = tn_text_se.group(1).strip()
         except AttributeError:
-            item_text = i
+            item_text = line
         item['text'] = get_html(item_text)
         tn.append(item)
     return tn
@@ -258,15 +270,12 @@ def run_kt(lang, date_today):
         kt = get_kt(f)
         if kt:
             key_terms.append(kt)
-    for i in key_terms:
-        try:
-            i['aliases'] = list(set([x for x in kt_aliases[i['id']]
-                                     if x != i['term']]))
-        except KeyError:
-            # this just means no aliases were found
-            pass
+    for i in key_terms:  # type: dict
+        if i['id'] in kt_aliases:
+            i['aliases'] = [x for x in kt_aliases[i['id']] if x != i['term']]
+
     key_terms.sort(key=lambda y: len(y['term']), reverse=True)
-    key_terms.append({'date_modified': date_today, 'version': '3'})
+    key_terms.append({'date_modified': date_today, 'version': '4'})
     api_path = os.path.join(api_v2, 'bible', lang)
     write_json('{0}/terms.json'.format(api_path), key_terms)
 
@@ -298,7 +307,7 @@ def run_tn(lang, date_today):
                     frames.append(frame)
 
         frames.sort(key=lambda x: x['id'])
-        frames.append({'date_modified': date_today, 'version': '3'})
+        frames.append({'date_modified': date_today, 'version': '4'})
         write_json('{0}/notes.json'.format(api_path), frames)
         if book not in tw_dict:
             print('Terms not found for {0}'.format(book))
@@ -308,7 +317,7 @@ def run_tn(lang, date_today):
 
 
 def save_tw(filepath, date_today, tw_book_dict):
-    tw_cat = {'chapters': [], 'date_modified': date_today, 'version': '3'}
+    tw_cat = {'chapters': [], 'date_modified': date_today, 'version': '4'}
     for chp in tw_book_dict:
         tw_book_dict[chp].sort(key=lambda x: x['id'])
         entry = {'id': chp,
@@ -322,7 +331,7 @@ def save_tw(filepath, date_today, tw_book_dict):
 def run_cq(lang, date_today):
     cq_path = os.path.join(pages, lang, 'bible/questions/comprehension')
     for book in os.listdir(cq_path):
-        book_questions = []
+        book_questions = []  # type: list[dict]
         book_path = os.path.join(cq_path, book)
         if len(book) > 3:
             continue
@@ -353,7 +362,14 @@ def get_cq(f):
 
 def get_q_and_a(text):
     cq = []
+    first_line = None
     for line in text.splitlines():
+        line = line.strip()
+
+        if not first_line and line.startswith('==='):
+            first_line = line
+            continue
+
         if line.startswith('\n') or \
                 line == '' or \
                 line.startswith('~~') or \
@@ -372,7 +388,7 @@ def get_q_and_a(text):
             cq.append(item)
             continue
         else:
-            print(line)
+            print_error('tQ error in {0}: {1}'.format(first_line, line))
     return cq
 
 
@@ -398,5 +414,12 @@ def fix_refs(refs):
 if __name__ == '__main__':
     today = ''.join(str(datetime.date.today()).rsplit('-')[0:3])
     run_tn('en', today)
-    run_kt('en', today)
-    run_cq('en', today)
+
+    # todo: 03 OCT 2016, need new script to publish tW from Gogs
+    # run_kt('en', today)
+
+    # todo: 03 OCT 2016, need new script to publish tQ from Gogs
+    # run_cq('en', today)
+
+    print_ok('Finished: ', 'exported tN.')
+
