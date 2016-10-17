@@ -5,16 +5,17 @@ import bible_classes
 
 
 class Book(object):
-    verse_re = re.compile(r'(\\v\s*[0-9-]*\s+)', re.UNICODE)
-    chapter_re = re.compile(r'(\\c\s*[0-9]*\s*\n)', re.UNICODE)
+    verse_re = re.compile(r'(\\v[\u00A0\s][0-9-]*\s+)', re.UNICODE)
+    chapter_re = re.compile(r'(\\c[\u00A0\s][0-9]*\s*\n)', re.UNICODE)
     tag_re = re.compile(r'\s(\\\S+)\s', re.UNICODE)
     bad_tag_re = re.compile(r'(\S\\\S+)\s', re.UNICODE)
     tag_exceptions = ('\\f*', '\\fe*', '\\qs*')
+    nbsp_re = re.compile(r'(\\[a-z0-9]+)([\u00A0])', re.UNICODE)
 
     def __init__(self, book_id, name, number):
         """
-        :type book_id: str
-        :type name: str
+        :type book_id: str|unicode
+        :type name: str|unicode
         :type number: int
         """
         self.book_id = book_id       # type: str
@@ -31,7 +32,14 @@ class Book(object):
         return str(self.number).zfill(2)
 
     def set_usfm(self, new_usfm):
-        self.usfm = new_usfm.replace('\r\n', '\n')
+
+        # remove Windows line endings
+        temp = new_usfm.replace('\r\n', '\n')
+
+        # replace nbsp in USFM tags with normal space (32)
+        temp = self.nbsp_re.sub(r'\1 ', temp)
+
+        self.usfm = temp
 
     def build_usfm_from_chapters(self):
         self.usfm = self.header_usfm
@@ -268,7 +276,7 @@ class Chapter(object):
                     i += 1
 
                 if i < len(chunks):
-                    verse_search = re.search(r'\\v {0}[\s-]'.format(chunks[i].first_verse), line)
+                    verse_search = re.search(r'\\v[\u00A0\s]{0}[\s-]'.format(chunks[i].first_verse), line)
                     if verse_search:
 
                         # insert before \p, not after

@@ -43,8 +43,8 @@ download_dir = ''
 
 out_template = '/var/www/vhosts/api.unfoldingword.org/httpdocs/{0}/txt/1/{1}-{2}'
 
-id_re = re.compile(r'\\id\s+(\w{3}).*')
-s5_re = re.compile(r'\\s5\s*')
+id_re = re.compile(r'\\id[\u00A0\s](\w{3}).*')
+s5_re = re.compile(r'\\s5[\u00A0\s]*')
 nl_re = re.compile(r'\n{2,}')
 
 # TODO: change these to point to the API when it is available
@@ -122,6 +122,7 @@ def main(git_repo, domain):
 
     # walk through the usfm files
     usfm_files = glob(os.path.join(usfm_dir, '*.usfm'))
+    errors_found = False
     for usfm_file in usfm_files:
 
         # read the file
@@ -152,6 +153,8 @@ def main(git_repo, domain):
 
         # do basic checks
         book.verify_chapters_and_verses(True)
+        if book.validation_errors:
+            errors_found = True
 
         # get chunks for this book
         Bible.chunk_book(metadata_obj.versification, book)
@@ -171,6 +174,11 @@ def main(git_repo, domain):
                                                  'desc': ''
                                                  }
         print('finished.')
+
+    # stop if errors were found
+    if errors_found:
+        print_error('These USFM errors must be corrected before publishing can continue.')
+        sys.exit(1)
 
     print('Writing status.json...', end=' ')
     status = {"slug": '{0}'.format(metadata_obj.slug.lower()),
