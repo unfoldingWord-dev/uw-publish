@@ -54,7 +54,7 @@ book_file = api_root + '/versification/{0}/books.json'
 chunk_url = api_root + '/versification/{0}/chunks/{1}.json'
 
 
-def main(git_repo, domain):
+def main(git_repo, tag, domain):
 
     global download_dir, out_template
 
@@ -70,7 +70,7 @@ def main(git_repo, domain):
     download_dir = '/tmp/{0}'.format(git_repo.rpartition('/')[2])
     make_dir(download_dir)
     downloaded_file = '{0}/{1}.zip'.format(download_dir, git_repo.rpartition('/')[2])
-    file_to_download = join_url_parts(git_repo, 'archive/master.zip')
+    file_to_download = join_url_parts(git_repo, 'archive/' + tag + '.zip')
     books_published = {}
     metadata_obj = None
     usfm_dir = None
@@ -228,6 +228,9 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--gitrepo', dest='gitrepo', default=False,
                         required=True, help='Git repository where the source can be found.')
 
+    parser.add_argument('-t', '--tag', dest='tag', default='master',
+                        required=False, help='Branch or tag to use as the source. Default is master.')
+
     parser.add_argument('-d', '--domain', dest='domain', choices=['udb', 'ulb', 'pdb'],
                         required=True, help='ulb, udb or pdb')
 
@@ -239,7 +242,7 @@ if __name__ == '__main__':
 
     try:
         print_ok('STARTING: ', 'importing USFM repository.')
-        main(args.gitrepo, args.domain)
+        main(args.gitrepo, args.tag, args.domain)
         print_ok('ALL FINISHED: ', 'importing USFM repository.')
         print_notice('Don\'t forget to notify the interested parties.')
 

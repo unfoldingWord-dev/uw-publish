@@ -6,7 +6,8 @@ import bible_classes
 
 class Book(object):
     verse_re = re.compile(r'(\\v[\u00A0\s][0-9-]*\s+)', re.UNICODE)
-    chapter_re = re.compile(r'(\\c[\u00A0\s][0-9]*\s*\n)', re.UNICODE)
+    chapter_re = re.compile(r'(\\c[\u00A0\s][0-9]+\s*\n)', re.UNICODE)
+    bad_chapter_re = re.compile(r'\\c[\u00A0\s][0-9]+([^0-9\n]+)', re.UNICODE)
     tag_re = re.compile(r'\s(\\\S+)\s', re.UNICODE)
     bad_tag_re = re.compile(r'(\S\\\S+)\s', re.UNICODE)
     tag_exceptions = ('\\f*', '\\fe*', '\\qs*')
@@ -58,6 +59,11 @@ class Book(object):
         # check for git conflicts
         if '<<<< HEAD' in self.usfm:
             self.append_error('There is a Git conflict header in ' + self.book_id)
+
+        # check for bad chapter tags
+        for bad_chapter in self.bad_chapter_re.finditer(self.usfm):
+            if bad_chapter.group(1).strip():
+                self.append_error('Invalid chapter marker: "{0}"'.format(bad_chapter.group(0)))
 
         # split into chapters
         self.check_chapters(self.chapter_re.split(self.usfm))
