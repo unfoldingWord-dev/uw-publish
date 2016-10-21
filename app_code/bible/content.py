@@ -8,6 +8,7 @@ class Book(object):
     verse_re = re.compile(r'(\\v[\u00A0\s][0-9-]*\s+)', re.UNICODE)
     chapter_re = re.compile(r'(\\c[\u00A0\s][0-9]+\s*\n)', re.UNICODE)
     bad_chapter_re = re.compile(r'\\c[\u00A0\s][0-9]+([^0-9\n]+)', re.UNICODE)
+    empty_tag_re = re.compile(r'\n(.*?\\[\u00A0\s]*?\n.*?)\n', re.UNICODE)
     tag_re = re.compile(r'\s(\\\S+)\s', re.UNICODE)
     bad_tag_re = re.compile(r'(\S\\\S+)\s', re.UNICODE)
     tag_exceptions = ('\\f*', '\\fe*', '\\qs*')
@@ -64,6 +65,11 @@ class Book(object):
         for bad_chapter in self.bad_chapter_re.finditer(self.usfm):
             if bad_chapter.group(1).strip():
                 self.append_error('Invalid chapter marker: "{0}"'.format(bad_chapter.group(0)))
+
+        # check for empty tags
+        for bad_tag in self.empty_tag_re.finditer(self.usfm):
+            if bad_tag.group(1).strip():
+                self.append_error('Empty USFM marker: "{0}"'.format(bad_tag.group(1)))
 
         # split into chapters
         self.check_chapters(self.chapter_re.split(self.usfm))
