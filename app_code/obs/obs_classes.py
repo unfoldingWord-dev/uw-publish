@@ -35,8 +35,31 @@ class OBSStatus(object):
     def __contains__(self, item):
         return item in self.__dict__
 
+    @staticmethod
+    def from_manifest(manifest):
+        status = OBSStatus()
+
+        manifest_status = manifest['status']
+
+        status.checking_entity = ', '.join(manifest_status['checking_entity'])
+        status.checking_level = manifest_status['checking_level']
+        status.comments = manifest_status['comments']
+        status.contributors = ', '.join(manifest_status['contributors'])
+        status.publish_date = manifest_status['pub_date']
+        status.source_text = manifest_status['source_translations'][0]['language_slug']
+        status.source_text_version = manifest_status['source_translations'][0]['version']
+        status.version = manifest_status['version']
+
+        return status
+
 
 class OBSChapter(object):
+
+    title_re = re.compile(r'^\s*#(.*?)#*\n', re.UNICODE)
+    ref_re = re.compile(r'\n(_*.*?_*)\n*$', re.UNICODE)
+    frame_re = re.compile(r'!\[Image\].*?obs-en-(\d\d)-(\d\d)\.jpg.*?\)\n([^!]*)', re.UNICODE)
+    img_url = 'https://cdn.door43.org/obs/jpg/360px/obs-en-{0}.jpg'
+
     def __init__(self, json_obj=None):
         """
         Class constructor. Optionally accepts an object for initialization.
@@ -77,7 +100,7 @@ class OBSChapter(object):
         for x in range(1, expected_frame_count + 1):
 
             # frame id is formatted like '01-01'
-            frame_id = self.number.zfill(2) + '-' + str(x).zfill(2)
+            frame_id = '{0}-{1}'.format(self.number.zfill(2), str(x).zfill(2))
 
             # get the next frame
             frame = next((f for f in self.frames if f['id'] == frame_id), None)  # type: dict
@@ -105,6 +128,53 @@ class OBSChapter(object):
 
     def __str__(self):
         return self.__class__.__name__ + ' ' + self.number
+
+    @staticmethod
+    def from_markdown(markdown, chapter_number):
+        """
+
+        :param str|unicode markdown:
+        :param int chapter_number:
+        :return: OBSChapter
+        """
+
+        return_val = OBSChapter()
+        return_val.number = str(chapter_number).zfill(2)
+
+        # remove Windows line endings
+        markdown = markdown.replace('\r\n', '\n')
+
+        # title: the first non-blank line is title if it starts with '#'
+        match = OBSChapter.title_re.search(markdown)
+        if match:
+            return_val.title = match.group(1).strip()
+            markdown = markdown.replace(match.group(0), str(''), 1)
+
+        # ref
+        match = OBSChapter.ref_re.search(markdown)
+        if match:
+            return_val.ref = match.group(1).strip()
+            markdown = markdown.replace(match.group(0), str(''), 1)
+
+        # frames
+        for frame in OBSChapter.frame_re.finditer(markdown):
+            # 1: chapter number
+            # 2: frame number
+            # 3: frame text
+
+            if int(frame.group(1)) != chapter_number:
+                raise Exception('Expected chapter {0} but found {1}.'.format(str(chapter_number), frame.group(1)))
+
+            frame_id = '{0}-{1}'.format(frame.group(1), frame.group(2))
+
+            frame = {'id': frame_id,
+                     'img': OBSChapter.img_url.format(frame_id),
+                     'text': frame.group(3).strip()
+                     }
+
+            return_val.frames.append(frame)
+
+        return return_val
 
 
 class OBS(object):

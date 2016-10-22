@@ -12,7 +12,6 @@
 from __future__ import print_function, unicode_literals
 import argparse
 import codecs
-import glob
 import json
 import shutil
 import datetime
@@ -27,11 +26,6 @@ from app_code.obs.obs_classes import OBSStatus, OBS, OBSChapter, OBSEncoder
 from uw.update_catalog import update_catalog
 import sys
 import os
-
-if sys.version_info < (3, 0):
-    prompt = raw_input
-else:
-    prompt = input
 
 # remember this so we can delete it
 download_dir = ''
@@ -55,11 +49,11 @@ def main(git_repo, tag, no_pdf):
         git_repo = git_repo[:-1]
 
     # initialize some variables
-    today = ''.join(str(datetime.date.today()).rsplit('-')[0:3])  # str(datetime.date.today())
+    today = ''.join(str(datetime.date.today()).rsplit(str('-'))[0:3])  # str(datetime.date.today())
     download_dir = '/tmp/{0}'.format(git_repo.rpartition('/')[2])
     make_dir(download_dir)
     downloaded_file = '{0}/{1}.zip'.format(download_dir, git_repo.rpartition('/')[2])
-    file_to_download = join_url_parts(git_repo, 'archive/' + tag + '.zip')
+    file_to_download = join_url_parts(git_repo, 'archive/{0}.zip'.format(tag))
     manifest = None
     status = None  # type: OBSStatus
     content_dir = None
@@ -87,17 +81,12 @@ def main(git_repo, tag, no_pdf):
                 print('Reading the manifest...', end=' ')
                 content_dir = root
                 manifest = load_json_object(os.path.join(root, 'manifest.json'))
+                status = OBSStatus.from_manifest(manifest)
             finally:
                 print('finished.')
 
-        if 'status.json' in files:
-            # read the meta data
-            try:
-                print('Reading the status...', end=' ')
-                content_dir = root
-                status = OBSStatus(os.path.join(root, 'status.json'))
-            finally:
-                print('finished.')
+        if 'content' in dirs:
+            content_dir = os.path.join(root, 'content')
 
         # if we have everything, exit the loop
         if content_dir and manifest and status:
@@ -113,15 +102,15 @@ def main(git_repo, tag, no_pdf):
         sys.exit(1)
 
     print('Initializing OBS object...', end=' ')
-    lang = manifest['target_language']['id']
+    lang = manifest['language']['slug']
     obs_obj = OBS()
     obs_obj.date_modified = today
-    obs_obj.direction = manifest['target_language']['direction']
+    obs_obj.direction = manifest['language']['dir']
     obs_obj.language = lang
     print('finished')
 
     obs_obj.chapters = load_obs_chapters(content_dir)
-    obs_obj.chapters.sort(key=lambda c: c['number'])
+    obs_obj.chapters.sort(key=lambda c: int(c['number']))
 
     if not obs_obj.verify_all():
         print_error('Quality check did not pass.')
@@ -133,16 +122,13 @@ def main(git_repo, tag, no_pdf):
 
     print('Loading the catalog...', end=' ')
     export_dir = '/var/www/vhosts/door43.org/httpdocs/exports'
-    # uw_cat_path = os.path.join(unfoldingWord_dir, 'obs-catalog.json')
-    # uw_catalog = load_json_object(uw_cat_path, [])
-    # uw_cat_langs = [x['language'] for x in uw_catalog]
+
     cat_path = os.path.join(export_dir, 'obs-catalog.json')
     catalog = load_json_object(cat_path, [])
     print('finished')
 
     print('Getting already published languages...', end=' ')
     json_lang_file_path = os.path.join(export_dir, lang, 'obs', 'obs-{0}.json'.format(lang))
-    # prev_json_lang = load_json_object(json_lang_file_path, {})
 
     if lang not in lang_dict:
         print("Configuration for language {0} missing.".format(lang))
@@ -156,6 +142,7 @@ def main(git_repo, tag, no_pdf):
 
     if updated:
         ([x for x in catalog if x['language'] == lang][0]['date_modified']) = today
+        # noinspection PyTypeChecker
         write_file(json_lang_file_path.replace('.txt', '.json'), cur_json)
     print('finished.')
 
@@ -199,6 +186,7 @@ def create_pdf(lang_code, checking_level, version):
         # run context
         print_notice('Running context - this may take several minutes.')
 
+        # noinspection PyTypeChecker
         trackers = ','.join(['afm.loading', 'fonts.missing', 'fonts.warnings', 'fonts.names',
                              'fonts.specifications', 'fonts.scaling', 'system.dump'])
 
@@ -232,6 +220,7 @@ def export_to_api(lang, status, today, cur_json):
     try:
         github_org = None
         if os.path.isfile('/root/.github_pass'):
+            # noinspection PyTypeChecker
             pw = open('/root/.github_pass', 'r').read().strip()
             g_user = githubLogin('dsm-git', pw)
             github_org = getGithubOrg('unfoldingword', g_user)
@@ -335,32 +324,11 @@ def load_obs_chapters(content_dir):
 
     for story_num in range(1, 51):
         chapter_num = str(story_num).zfill(2)
-        story_dir = os.path.join(content_dir, chapter_num)
-        obs_chapter = OBSChapter()
-        obs_chapter.number = chapter_num
+        story_file = os.path.join(content_dir, '{0}.md'.format(chapter_num))
 
-        # get the translated chapter ref
-        with codecs.open(os.path.join(story_dir, 'reference.txt'), 'r', encoding='utf-8-sig') as in_file:
-            obs_chapter.ref = in_file.read()
-
-        # get the translated chapter title
-        with codecs.open(os.path.join(story_dir, 'title.txt'), 'r', encoding='utf-8-sig') as in_file:
-            obs_chapter.title = in_file.read()
-
-        # loop through the frames for this chapter
-        frame_list = glob.glob('{0}/[0-9][0-9].txt'.format(story_dir))
-        for frame_file in frame_list:
-            with codecs.open(frame_file, 'r', encoding='utf-8-sig') as in_file:
-                frame_text = in_file.read()
-
-            frame_id = chapter_num + '-' + os.path.splitext(os.path.basename(frame_file))[0]
-
-            frame = {'id': frame_id,
-                     'img': OBSChapter.img_url.format(frame_id),
-                     'text': frame_text
-                     }
-
-            obs_chapter.frames.append(frame)
+        # get the translated chapter text
+        with codecs.open(story_file, 'r', encoding='utf-8-sig') as in_file:
+            obs_chapter = OBSChapter.from_markdown(in_file.read(), story_num)  # type: OBSChapter
 
         # sort the frames by id
         obs_chapter.frames.sort(key=lambda f: f['id'])
@@ -373,7 +341,7 @@ def load_obs_chapters(content_dir):
 
 
 if __name__ == '__main__':
-    print()
+    print('')
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-r', '--gitrepo', dest='gitrepo', default=False,
                         required=True, help='Git repository where the source can be found.')
@@ -382,10 +350,6 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--nopdf', dest='nopdf', action='store_true', help='Do not produce a PDF.')
 
     args = parser.parse_args(sys.argv[1:])
-
-    # prompt user to update status.json
-    print_notice('Check status.json in the git repository and update the information if needed.')
-    prompt('Press Enter to continue when ready...')
 
     try:
         print_ok('STARTING: ', 'publishing OBS repository.')

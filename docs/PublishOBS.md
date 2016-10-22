@@ -42,3 +42,12 @@
 1. Run `chown -R syncthing:syncthing /var/www/vhosts/api.unfoldingword.org/httpdocs/`.
 1. On pki.unfoldingword.org run `sudo /root/tools/uw/sign.py`.
 1. Regenerate the uW website, `make publish`.
+
+
+### From a Resource Container
+1. Create `noto-LANG_CODE.tex` in `tools/obs/tex`.
+1. SSH to us.door43.org and `sudo SSH_AUTH_SOCK=$SSH_AUTH_SOCK bash`.
+1. Run `python execute.py publish_obs_from_rc -r https://git.door43.org/phillip-hopper/ne-obs.git`.
+1. Run `chown -R syncthing:syncthing /var/www/vhosts/api.unfoldingword.org/httpdocs/`.
+1. On pki.unfoldingword.org run `sudo /root/tools/uw/sign.py`.
+1. Regenerate the uW website, `cd /var/www/projects/unfoldingWord.github.io/ && git pull && make publish`.
