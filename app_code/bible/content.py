@@ -1,14 +1,23 @@
 from __future__ import print_function, unicode_literals
+from future.builtins import chr
 import re
 from general_tools.print_utils import print_error
 import bible_classes
 
 
 class Book(object):
-    verse_re = re.compile(r'(\\v[\u00A0\s][0-9-]*\s+)', re.UNICODE)
+    verse_re = re.compile(r'(\\v[\u00A0\s][0-9-\u2013\u2014]*\s+)', re.UNICODE)
     chapter_re = re.compile(r'(\\c[\u00A0\s][0-9]+\s*\n)', re.UNICODE)
+
+    # chapter tag with other characters following the chapter number
     bad_chapter_re = re.compile(r'\\c[\u00A0\s][0-9]+([^0-9\n]+)', re.UNICODE)
+
+    # back-slash with no tag character following it
     empty_tag_re = re.compile(r'\n(.*?\\[\u00A0\s]*?\n.*?)\n', re.UNICODE)
+
+    # chapter or verse with missing number
+    missing_num_re = re.compile(r'(\\[cv][\u00A0\s][^0-9]+?)[\u00A0\s]+?', re.UNICODE)
+
     tag_re = re.compile(r'\s(\\\S+)\s', re.UNICODE)
     bad_tag_re = re.compile(r'(\S\\\S+)\s', re.UNICODE)
     tag_exceptions = ('\\f*', '\\fe*', '\\qs*')
@@ -70,6 +79,10 @@ class Book(object):
         for bad_tag in self.empty_tag_re.finditer(self.usfm):
             if bad_tag.group(1).strip():
                 self.append_error('Empty USFM marker: "{0}"'.format(bad_tag.group(1)))
+
+        # check for chapter or verse tags without numbers
+        for no_num in self.missing_num_re.finditer(self.usfm):
+            self.append_error('Chapter or verse tag without a number: "{0}"'.format(no_num.group(1)))
 
         # split into chapters
         self.check_chapters(self.chapter_re.split(self.usfm))
@@ -174,9 +187,27 @@ class Book(object):
             # parse the verse number
             test_num = verse_blocks[current_cv_index][3:].strip()
 
+            bridge_marker = None  # type: str
+
+            # check for invalid dash characters in verse bridge
+            # en dash = \u2013, 8211
+            # em dash = \u2014, 8212
+            if chr(8211) in test_num:
+                bridge_marker = chr(8211)
+                self.append_error('Invalid verse bridge (en dash used), ' + self.book_id + ' ' +
+                                  str(found_chapter.number) + ':' + test_num)
+
+            elif chr(8212) in test_num:
+                bridge_marker = chr(8212)
+                self.append_error('Invalid verse bridge (em dash used), ' + self.book_id + ' ' +
+                                  str(found_chapter.number) + ':' + test_num)
+
             # is this a verse bridge?
-            if '-' in test_num:
-                nums = test_num.split('-')
+            elif '-' in test_num:
+                bridge_marker = '-'
+
+            if bridge_marker:
+                nums = test_num.split(bridge_marker)
                 if len(nums) != 2 or not nums[0].strip().isdigit() or not nums[1].strip().isdigit():
                     self.append_error('Invalid verse bridge, ' + self.book_id + ' ' +
                                       str(found_chapter.number) + ':' + test_num)
@@ -185,7 +216,6 @@ class Book(object):
                     for bridge_num in range(int(nums[0].strip()), int(nums[1].strip()) + 1):
                         last_verse = self.check_this_verse(found_chapter, bridge_num, last_verse, processed_verses)
 
-                    current_cv_index += 2
             else:
                 if not test_num.isdigit():
 
@@ -197,7 +227,7 @@ class Book(object):
                     verse_num = int(test_num)
                     last_verse = self.check_this_verse(found_chapter, verse_num, last_verse, processed_verses)
 
-                current_cv_index += 2
+            current_cv_index += 2
 
         # are there verses missing from the end
         if last_verse < found_chapter.expected_max_verse_number:

@@ -97,10 +97,6 @@ def main(git_repo, tag, no_pdf):
         print_error('Did not find manifest.json in {}'.format(git_repo))
         sys.exit(1)
 
-    if not status:
-        print_error('Did not find status.json in {}'.format(git_repo))
-        sys.exit(1)
-
     print('Initializing OBS object...', end=' ')
     lang = manifest['language']['slug']
     obs_obj = OBS()
