@@ -10,6 +10,7 @@ import tempfile
 from general_tools.file_utils import write_file, unzip
 from general_tools.print_utils import print_error, print_ok, print_notice
 from general_tools.url_utils import join_url_parts, download_file
+from uw.update_catalog import update_catalog
 
 api_v2 = '/var/www/vhosts/api.unfoldingword.org/httpdocs/ts/txt/2/'
 
@@ -47,6 +48,7 @@ def main(date_today, tag, version):
     books = [x for x in os.listdir(source_root) if os.path.isdir(os.path.join(source_root, x))]
 
     for book in books:
+        print('Processing {}.'.format(book))
         book_dir = os.path.join(source_root, book)
         api_path = os.path.join(api_v2, book, 'en')
         # noinspection PyUnresolvedReferences
@@ -73,6 +75,11 @@ def main(date_today, tag, version):
         book_questions.sort(key=lambda y: y['id'])
         book_questions.append({'date_modified': date_today, 'version': version})
         write_file('{0}/questions.json'.format(api_path), book_questions, indent=2)
+
+    print()
+    print('Updating the catalogs...', end=' ')
+    update_catalog()
+    print('finished.')
 
 
 def get_cq(f):
