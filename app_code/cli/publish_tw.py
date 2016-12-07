@@ -11,6 +11,7 @@ import tempfile
 from general_tools.file_utils import write_file, unzip
 from general_tools.print_utils import print_ok, print_notice
 from general_tools.url_utils import join_url_parts, download_file
+from uw.update_catalog import update_catalog
 
 api_v2 = '/var/www/vhosts/api.unfoldingword.org/httpdocs/ts/txt/2/'
 tw_aliases = {}
@@ -77,6 +78,11 @@ def main(date_today, tag, version):
     tw_list.append({'date_modified': date_today, 'version': version})
     api_path = os.path.join(api_v2, 'bible', 'en')
     write_file('{0}/terms.json'.format(api_path), tw_list, indent=2)
+
+    print()
+    print('Updating the catalogs...', end=' ')
+    update_catalog()
+    print('finished.')
 
 
 def get_tw(f):

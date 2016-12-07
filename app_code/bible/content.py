@@ -1,20 +1,32 @@
 from __future__ import print_function, unicode_literals
+from future.builtins import chr
 import re
 from general_tools.print_utils import print_error
 import bible_classes
 
 
 class Book(object):
-    verse_re = re.compile(r'(\\v\s*[0-9-]*\s+)', re.UNICODE)
-    chapter_re = re.compile(r'(\\c\s*[0-9]*\s*\n)', re.UNICODE)
+    verse_re = re.compile(r'(\\v[\u00A0\s][0-9-\u2013\u2014]*\s+)', re.UNICODE)
+    chapter_re = re.compile(r'(\\c[\u00A0\s][0-9]+\s*\n)', re.UNICODE)
+
+    # chapter tag with other characters following the chapter number
+    bad_chapter_re = re.compile(r'\\c[\u00A0\s][0-9]+([^0-9\n]+)', re.UNICODE)
+
+    # back-slash with no tag character following it
+    empty_tag_re = re.compile(r'\n(.*?\\[\u00A0\s]*?\n.*?)\n', re.UNICODE)
+
+    # chapter or verse with missing number
+    missing_num_re = re.compile(r'(\\[cv][\u00A0\s][^0-9]+?)[\u00A0\s]+?', re.UNICODE)
+
     tag_re = re.compile(r'\s(\\\S+)\s', re.UNICODE)
     bad_tag_re = re.compile(r'(\S\\\S+)\s', re.UNICODE)
     tag_exceptions = ('\\f*', '\\fe*', '\\qs*')
+    nbsp_re = re.compile(r'(\\[a-z0-9]+)([\u00A0])', re.UNICODE)
 
     def __init__(self, book_id, name, number):
         """
-        :type book_id: str
-        :type name: str
+        :type book_id: str|unicode
+        :type name: str|unicode
         :type number: int
         """
         self.book_id = book_id       # type: str
@@ -31,7 +43,14 @@ class Book(object):
         return str(self.number).zfill(2)
 
     def set_usfm(self, new_usfm):
-        self.usfm = new_usfm.replace('\r\n', '\n')
+
+        # remove Windows line endings
+        temp = new_usfm.replace('\r\n', '\n')
+
+        # replace nbsp in USFM tags with normal space (32)
+        temp = self.nbsp_re.sub(r'\1 ', temp)
+
+        self.usfm = temp
 
     def build_usfm_from_chapters(self):
         self.usfm = self.header_usfm
@@ -50,6 +69,20 @@ class Book(object):
         # check for git conflicts
         if '<<<< HEAD' in self.usfm:
             self.append_error('There is a Git conflict header in ' + self.book_id)
+
+        # check for bad chapter tags
+        for bad_chapter in self.bad_chapter_re.finditer(self.usfm):
+            if bad_chapter.group(1).strip():
+                self.append_error('Invalid chapter marker: "{0}"'.format(bad_chapter.group(0)))
+
+        # check for empty tags
+        for bad_tag in self.empty_tag_re.finditer(self.usfm):
+            if bad_tag.group(1).strip():
+                self.append_error('Empty USFM marker: "{0}"'.format(bad_tag.group(1)))
+
+        # check for chapter or verse tags without numbers
+        for no_num in self.missing_num_re.finditer(self.usfm):
+            self.append_error('Chapter or verse tag without a number: "{0}"'.format(no_num.group(1)))
 
         # split into chapters
         self.check_chapters(self.chapter_re.split(self.usfm))
@@ -154,9 +187,27 @@ class Book(object):
             # parse the verse number
             test_num = verse_blocks[current_cv_index][3:].strip()
 
+            bridge_marker = None  # type: str
+
+            # check for invalid dash characters in verse bridge
+            # en dash = \u2013, 8211
+            # em dash = \u2014, 8212
+            if chr(8211) in test_num:
+                bridge_marker = chr(8211)
+                self.append_error('Invalid verse bridge (en dash used), ' + self.book_id + ' ' +
+                                  str(found_chapter.number) + ':' + test_num)
+
+            elif chr(8212) in test_num:
+                bridge_marker = chr(8212)
+                self.append_error('Invalid verse bridge (em dash used), ' + self.book_id + ' ' +
+                                  str(found_chapter.number) + ':' + test_num)
+
             # is this a verse bridge?
-            if '-' in test_num:
-                nums = test_num.split('-')
+            elif '-' in test_num:
+                bridge_marker = '-'
+
+            if bridge_marker:
+                nums = test_num.split(bridge_marker)
                 if len(nums) != 2 or not nums[0].strip().isdigit() or not nums[1].strip().isdigit():
                     self.append_error('Invalid verse bridge, ' + self.book_id + ' ' +
                                       str(found_chapter.number) + ':' + test_num)
@@ -165,7 +216,6 @@ class Book(object):
                     for bridge_num in range(int(nums[0].strip()), int(nums[1].strip()) + 1):
                         last_verse = self.check_this_verse(found_chapter, bridge_num, last_verse, processed_verses)
 
-                    current_cv_index += 2
             else:
                 if not test_num.isdigit():
 
@@ -177,7 +227,7 @@ class Book(object):
                     verse_num = int(test_num)
                     last_verse = self.check_this_verse(found_chapter, verse_num, last_verse, processed_verses)
 
-                current_cv_index += 2
+            current_cv_index += 2
 
         # are there verses missing from the end
         if last_verse < found_chapter.expected_max_verse_number:
@@ -268,7 +318,7 @@ class Chapter(object):
                     i += 1
 
                 if i < len(chunks):
-                    verse_search = re.search(r'\\v {0}[\s-]'.format(chunks[i].first_verse), line)
+                    verse_search = re.search(r'\\v[\u00A0\s]{0}[\s-]'.format(chunks[i].first_verse), line)
                     if verse_search:
 
                         # insert before \p, not after

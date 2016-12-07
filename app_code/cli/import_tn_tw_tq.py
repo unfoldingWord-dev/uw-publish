@@ -419,5 +419,5 @@ def fix_refs(refs):
 if __name__ == '__main__':
     today = ''.join(str(datetime.date.today()).rsplit('-')[0:3])
     run_tn('en', today)
-    run_kt('en', today)
-    run_cq('en', today)
+    # run_kt('en', today)
+    # run_cq('en', today)
