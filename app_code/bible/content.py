@@ -1,27 +1,49 @@
 from __future__ import print_function, unicode_literals
+import json
 from future.builtins import chr
 import re
 from general_tools.print_utils import print_error
+from general_tools.url_utils import get_url
 import bible_classes
 
 
 class Book(object):
-    verse_re = re.compile(r'(\\v[\u00A0\s][0-9-\u2013\u2014]*\s+)', re.UNICODE)
-    chapter_re = re.compile(r'(\\c[\u00A0\s][0-9]+\s*\n)', re.UNICODE)
+
+    # TODO: change these to point to the API when it is available
+    api_root = 'https://raw.githubusercontent.com/unfoldingWord-dev/uw-api/develop/static'
+    vrs_file = api_root + '/versification/ufw/ufw.vrs'
+    book_file = api_root + '/versification/ufw/books.json'
+    chunk_url = api_root + '/versification/ufw/chunks/{0}.json'
+
+    verse_re = re.compile(r'(\\v[\u00A0 ][0-9-\u2013\u2014]*\s+)', re.UNICODE)
+    chapter_re = re.compile(r'(\\c[\u00A0 ][0-9]+\s*\n)', re.UNICODE)
 
     # chapter tag with other characters following the chapter number
-    bad_chapter_re = re.compile(r'\\c[\u00A0\s][0-9]+([^0-9\n]+)', re.UNICODE)
+    bad_chapter_re = re.compile(r'\\c[\u00A0 ][0-9]+([^0-9\n]+)', re.UNICODE)
 
     # back-slash with no tag character following it
-    empty_tag_re = re.compile(r'\n(.*?\\[\u00A0\s]*?\n.*?)\n', re.UNICODE)
+    empty_tag_re = re.compile(r'\n(.*?\\[\u00A0 ]*?\n.*?)\n', re.UNICODE)
 
     # chapter or verse with missing number
-    missing_num_re = re.compile(r'(\\[cv][\u00A0\s][^0-9]+?)[\u00A0\s]+?', re.UNICODE)
+    missing_num_re = re.compile(r'(\\[cv][\u00A0 ][^0-9]+?)[\u00A0\s]+?', re.UNICODE)
+
+    # verse with no text
+    missing_verse_text_re = re.compile(r'(\\v[\u00A0 ][0-9-\u2013\u2014]*[\u00A0 ]*[\r\n])', re.UNICODE)
+
+    # git merge conflicts
+    git_conflict_re = re.compile(r'<<<<<<<.*?=======.*?>>>>>>>', re.UNICODE | re.DOTALL)
 
     tag_re = re.compile(r'\s(\\\S+)\s', re.UNICODE)
     bad_tag_re = re.compile(r'(\S\\\S+)\s', re.UNICODE)
     tag_exceptions = ('\\f*', '\\fe*', '\\qs*')
     nbsp_re = re.compile(r'(\\[a-z0-9]+)([\u00A0])', re.UNICODE)
+
+    # clean-up usfm
+    s5_re = re.compile(r'\\s5\s*')
+    nl_re = re.compile(r'\n{2,}')
+
+    # initialization
+    book_skeletons = None  # type: list<Book>
 
     def __init__(self, book_id, name, number):
         """
@@ -59,6 +81,14 @@ class Book(object):
         for chapter in self.chapters:
             self.usfm += "\n\n\\c {0}\n{1}".format(chapter.number, chapter.usfm)
 
+    def clean_usfm(self):
+
+        # remove superfluous line breaks
+        self.usfm = self.nl_re.sub('\n', self.usfm)
+
+        # remove \s5 lines
+        self.usfm = self.s5_re.sub('', self.usfm)
+
     def verify_chapters_and_verses(self, same_line=False):
 
         if same_line:
@@ -67,8 +97,12 @@ class Book(object):
             print('Verifying ' + self.book_id)
 
         # check for git conflicts
-        if '<<<< HEAD' in self.usfm:
-            self.append_error('There is a Git conflict header in ' + self.book_id)
+        conflicts = self.git_conflict_re.findall(self.usfm)
+        if conflicts:
+            if len(conflicts) == 1:
+                self.append_error('There is 1 Git conflict in {0}'.format(self.book_id))
+            else:
+                self.append_error('There are {0} Git conflicts in {1}'.format(len(conflicts), self.book_id))
 
         # check for bad chapter tags
         for bad_chapter in self.bad_chapter_re.finditer(self.usfm):
@@ -118,6 +152,11 @@ class Book(object):
                     # check the exceptions
                     if not match.endswith(self.tag_exceptions):
                         self.append_error('Invalid USFM tag in ' + current_chapter + ': ' + match)
+
+                # check for verses with no text
+                for no_text in self.missing_verse_text_re.finditer(chapter_usfm):
+                    self.append_error('Verse tag without text in {0}: "{1}"'.format(current_chapter,
+                                                                                    no_text.group(1).strip()))
 
     def check_chapters(self, blocks):
 
@@ -272,7 +311,24 @@ class Book(object):
         print_error(prefix + message)
         self.validation_errors.append(message)
 
+    def get_chunks(self):
+
+        chunk_str = get_url(self.chunk_url.format(self.book_id.lower()))
+        if not chunk_str:
+            raise Exception('Could not load chunks for ' + self.book_id)
+
+        chunks_obj = json.loads(chunk_str)
+
+        # chunk it
+        for chapter in chunks_obj:
+            for first_verse in chapter['first_verses']:
+                self.chunks.append(Chunk(chapter['chapter'], first_verse))
+
     def apply_chunks(self):
+
+        if not self.chunks:
+            self.get_chunks()
+
         for chap in self.chapters:
             chap.apply_chunks([c for c in self.chunks if c.chapter_num == chap.number])
 
@@ -283,8 +339,55 @@ class Book(object):
         # extra space between header and first chapter
         self.usfm = self.header_usfm + '\n\n' + new_usfm
 
+    @staticmethod
+    def create_book(book_key):
+        """
+        Returns the requested initialized Book object
+        :param str|unicode book_key: Either the 3 letter USFM code or a 6 character repo directory name, like 01-GEN.
+        :return: Book|None
+        """
+        if not Book.book_skeletons:
+
+            # get the list of books
+            books = json.loads(get_url(Book.book_file))
+
+            # get the versification file
+            raw = get_url(Book.vrs_file)
+            lines = [l for l in raw.replace('\r', '').split('\n') if l and l[0:1] != '#']
+
+            scheme = []
+
+            for key, value in iter(books.items()):
+
+                book = Book(key, value[0], int(value[1]))
+
+                # find the key in the lines
+                line = [line for line in lines if line[0:3] == key]
+                if not line:
+                    raise Exception('Could not load chapter information for ' + key)
+
+                chapters = line[0][4:].split()
+                for chapter in chapters:
+                    parts = chapter.split(':')
+                    book.chapters.append(Chapter(int(parts[0]), int(parts[1])))
+                scheme.append(book)
+
+            Book.book_skeletons = scheme
+
+        # is the book_key a directory name?
+        if len(book_key) == 3:
+            found = [book for book in Book.book_skeletons if book.book_id == book_key]
+        else:
+            found = [book for book in Book.book_skeletons if book.dir_name == book_key]
+
+        return found[0] if found else None
+
 
 class Chapter(object):
+
+    # lines that are just a \q tag
+    q_alone_re = re.compile(r'^\\q[0-9a-z]*\s*$', re.UNICODE)
+
     def __init__(self, number, expected_max_verse_number):
         """
         :type number: int
@@ -321,8 +424,10 @@ class Chapter(object):
                     verse_search = re.search(r'\\v[\u00A0\s]{0}[\s-]'.format(chunks[i].first_verse), line)
                     if verse_search:
 
-                        # insert before \p, not after
+                        # insert before \p and \q, not after
                         if previous_line == '\\p':
+                            newlines.insert(len(newlines) - 1, '\n\\s5')
+                        elif self.q_alone_re.search(previous_line):
                             newlines.insert(len(newlines) - 1, '\n\\s5')
                         else:
                             newlines.append('\n\\s5')

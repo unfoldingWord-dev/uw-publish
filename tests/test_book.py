@@ -1,5 +1,4 @@
 from __future__ import print_function, unicode_literals
-
 import codecs
 import os
 import sys
@@ -36,3 +35,22 @@ class TestBook(TestCase):
         test_text = book.usfm
         self.assertEqual(32, ord(test_text[3:4]))
         self.assertEqual(71, test_text.count(from_char('\u00A0')))
+
+    def test_chunk_poetry(self):
+
+        resources_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resources')
+        test_file = os.path.join(resources_dir, 'chunk01.usfm')
+
+        # read the file
+        with codecs.open(test_file, 'r', 'utf-8') as in_file:
+            book_usfm = in_file.read()
+
+        book = Book.create_book('PHP')  # type: Book
+        book.set_usfm(book_usfm)
+        book.clean_usfm()
+        book.verify_usfm_tags()
+        book.verify_chapters_and_verses()
+        book.apply_chunks()
+
+        self.assertIn('\\s5\n\\q\n\\v 7', book.chapters[0].usfm)
+        self.assertIn('\\s5\n\\q\n\\v 9', book.chapters[1].usfm)
