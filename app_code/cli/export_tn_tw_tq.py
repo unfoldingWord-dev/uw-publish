@@ -199,7 +199,7 @@ def get_tw_list(fr_id, page, book):
     entry = {'id': fr,
              'items': [{'id': x} for x in tw_list]
              }
-    entry['items'].sort(key=lambda y: y['id'])
+    # entry['items'].sort(key=lambda y: y['id'])
     tw_dict[book][chp].append(entry)
 
 
