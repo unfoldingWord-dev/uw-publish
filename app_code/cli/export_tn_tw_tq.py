@@ -193,8 +193,9 @@ def get_tw_list(fr_id, page, book):
         return
 
     text = it_se.group(1).strip()
-    tw_list = [x.split('|')[0] for x in link_re.findall(text)]
-    tw_list += dw_link_re.findall(text)
+    #tw_list = [x.split('|')[0] for x in link_re.findall(text)]
+    #tw_list += dw_link_re.findall(text)
+    tw_list = [x.split('|')[0] for x in dw_link_re.findall(text)]
     # Add to catalog
     entry = {'id': fr,
              'items': [{'id': x} for x in tw_list]
