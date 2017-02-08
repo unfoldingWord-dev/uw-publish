@@ -35,7 +35,7 @@ class Book(object):
 
     tag_re = re.compile(r'\s(\\\S+)\s', re.UNICODE)
     bad_tag_re = re.compile(r'(\S\\\S+)\s', re.UNICODE)
-    tag_exceptions = ('\\f*', '\\fe*', '\\qs*')
+    tag_exceptions = ('\\f*', '\\fe*', '\\fqa*', '\\qs*')
     nbsp_re = re.compile(r'(\\[a-z0-9]+)([\u00A0])', re.UNICODE)
 
     # clean-up usfm
