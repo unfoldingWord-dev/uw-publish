@@ -11,20 +11,17 @@
 #
 
 from __future__ import print_function, unicode_literals
+import argparse
 import codecs
 import glob
 import json
 import os
 import re
-
-# Import USFM-Tools
 import datetime
-
+import sys
 from general_tools.file_utils import make_dir
-from general_tools.print_utils import print_ok, print_error
-
-base_dir = os.path.dirname(os.path.realpath(__file__))
-
+from general_tools.print_utils import print_ok, print_notice
+from uw.update_catalog import update_catalog
 
 root = '/var/www/vhosts/door43.org/httpdocs/data/gitrepo'
 pages = os.path.join(root, 'pages')
@@ -33,16 +30,9 @@ kt_aliases = {}
 tw_dict = {}
 
 # Regexes for grabbing content
-def_re = re.compile(r'===== (Definition|Facts|Description):? =====(.*?)\n[=(]', re.UNICODE | re.DOTALL)
-kt_re = re.compile(r'====== (.*?) ======', re.UNICODE)
-sub_re = re.compile(r'\n==== (.*) ====\n', re.UNICODE)
-link_name_re = re.compile(r':([A-Za-z0-9\-]*)\]\]', re.UNICODE)
 link_re = re.compile(r':([^:]*\|.*?)\]\]', re.UNICODE)
 # noinspection SpellCheckingInspection
 dw_link_re = re.compile(r'en:obe:[ktoher]*:(.*?)\]\]', re.UNICODE)
-cf_re = re.compile(r'See also.*', re.UNICODE)
-examples_re = re.compile(r'===== Examples from the Bible stories.*', re.UNICODE | re.DOTALL)
-ex_txt_re = re.compile(r'\*\* (.*)', re.UNICODE)
 fr_id_re = re.compile(r'[0-9][0-9][0-9]?/[0-9][0-9][0-9]?', re.UNICODE)
 tN_re = re.compile(r'==== translationNotes.*', re.UNICODE | re.DOTALL)
 it_re = re.compile(r'==== translationWords: ====(.*?)====', re.UNICODE | re.DOTALL)
@@ -50,74 +40,11 @@ tN_term_re = re.compile(r' \*\*(.*?)\*\*', re.UNICODE)
 tN_text_re = re.compile(r' ?[–-] ?(.*)', re.UNICODE)
 tN_text_re2 = re.compile(r'\* (.*)', re.UNICODE)
 pub_re = re.compile(r'tag>.*publish.*', re.UNICODE)
-suggest_re = re.compile(r'===== Translation Suggestions:? =====(.*?)[=(][TS]?', re.UNICODE | re.DOTALL)
-q_re = re.compile(r'Q\?(.*)', re.UNICODE)
-a_re = re.compile(r'A\.(.*)', re.UNICODE)
-ref_re = re.compile(r'\[(.*?)]', re.UNICODE)
 
 # Regexes for DW to HTML conversion
 bold_re = re.compile(r'\*\*(.*?)\*\*', re.UNICODE)
 li_re = re.compile(r' +\* ', re.UNICODE)
 h3_re = re.compile(r'\n=== (.*?) ===\n', re.UNICODE)
-
-
-def get_kt(f):
-    with codecs.open(f, 'r', encoding='utf-8') as in_file:
-        page = in_file.read()
-    if not pub_re.search(page):
-        return False
-
-    # The filename is the ID
-    kt = {'id': f.rsplit('/', 1)[1].replace('.txt', '')}
-    kt_se = kt_re.search(page)
-    if not kt_se:
-        print('Term not found for {}'.format(kt['id']))
-        return False
-    kt['term'] = kt_se.group(1).strip()
-    kt['sub'] = get_kt_sub(page)
-    kt['def_title'], kt['def'] = get_kt_def(page)
-    if not kt['def_title']:
-        print('Definition or Facts not found for {}'.format(kt['id']))
-        return False
-    kt['cf'] = get_kt_cf(page)
-    kt['def'] += get_kt_suggestions(page)
-    return kt
-
-
-def get_kt_def(page):
-    def_se = def_re.search(page)
-    if def_se:
-        def_txt = def_se.group(2).rstrip()
-        return def_se.group(1), get_html(def_txt)
-
-    # if you are here, the kt def was not found
-    return False, False
-
-
-def get_kt_suggestions(page):
-    sug_format = '<h2>Translation Suggestions</h2>{0}'
-    sug_se = suggest_re.search(page)
-    if not sug_se:
-        return ''
-    sug_txt = sug_format.format(sug_se.group(1).rstrip())
-    return get_html(sug_txt)
-
-
-def get_kt_sub(page):
-    sub = ''
-    sub_se = sub_re.search(page)
-    if sub_se:
-        sub = sub_se.group(1)
-    return sub.strip()
-
-
-def get_kt_cf(page):
-    cf = []
-    cf_se = cf_re.search(page)
-    if cf_se:
-        text = cf_se.group(0)
-        cf = [x.group(1) for x in link_name_re.finditer(text)]
-    return cf
 
 
 def get_html(text):
@@ -168,7 +95,8 @@ def get_frame(f, book):
         return False
     frame = {}
     get_aliases(page, f)
-    frame['id'] = fr_id_re.search(f).group(0).strip().replace('/', '-')
+    frame_id = fr_id_re.search(f).group(0)  # type: unicode
+    frame['id'] = frame_id.strip().replace('/', '-')
 
     tn = get_tn(page)
     if not tn and not f.endswith(('/00.txt', '/000.txt')):
@@ -193,8 +121,8 @@ def get_tw_list(fr_id, page, book):
         return
 
     text = it_se.group(1).strip()
-    #tw_list = [x.split('|')[0] for x in link_re.findall(text)]
-    #tw_list += dw_link_re.findall(text)
+    # tw_list = [x.split('|')[0] for x in link_re.findall(text)]
+    # tw_list += dw_link_re.findall(text)
     tw_list = [x.split('|')[0] for x in dw_link_re.findall(text)]
     # Add to catalog
     entry = {'id': fr,
@@ -262,26 +190,14 @@ def get_tn(page):
     return tn
 
 
-def run_kt(lang, date_today):
-    kt_path = os.path.join(pages, lang, 'obe')
-    key_terms = []
-    for f in glob.glob('{0}/*/*.txt'.format(kt_path)):
-        if 'home.txt' in f or '1-discussion-topic.txt' in f:
-            continue
-        kt = get_kt(f)
-        if kt:
-            key_terms.append(kt)
-    for i in key_terms:  # type: dict
-        if i['id'] in kt_aliases:
-            i['aliases'] = [x for x in kt_aliases[i['id']] if x != i['term']]
-
-    key_terms.sort(key=lambda y: len(y['term']), reverse=True)
-    key_terms.append({'date_modified': date_today, 'version': '4'})
-    api_path = os.path.join(api_v2, 'bible', lang)
-    write_json('{0}/terms.json'.format(api_path), key_terms)
-
-
-def run_tn(lang, date_today):
+def run_tn(version, lang, date_today):
+    """
+    Exports tN from Dokuwiki
+    :param int version:
+    :param str|unicode lang:
+    :param str|unicode date_today:
+    :return: None
+    """
     tn_path = os.path.join(pages, lang, 'bible/notes')
     for book in os.listdir(tn_path):
         book_path = os.path.join(tn_path, book)
@@ -308,17 +224,22 @@ def run_tn(lang, date_today):
                     frames.append(frame)
 
         frames.sort(key=lambda x: x['id'])
-        frames.append({'date_modified': date_today, 'version': '4'})
+        frames.append({'date_modified': date_today, 'version': str(version)})
         write_json('{0}/notes.json'.format(api_path), frames)
         if book not in tw_dict:
             print('Terms not found for {0}'.format(book))
             continue
-        save_tw('{0}/tw_cat.json'.format(api_path), date_today, tw_dict[book])
+        save_tw(version, '{0}/tw_cat.json'.format(api_path), date_today, tw_dict[book])
         del tw_dict[book]
 
+    print()
+    print('Updating the catalogs...', end=' ')
+    update_catalog()
+    print('finished.')
 
-def save_tw(filepath, date_today, tw_book_dict):
-    tw_cat = {'chapters': [], 'date_modified': date_today, 'version': '4'}
+
+def save_tw(version, filepath, date_today, tw_book_dict):
+    tw_cat = {'chapters': [], 'date_modified': date_today, 'version': str(version)}
     for chp in tw_book_dict:
         tw_book_dict[chp].sort(key=lambda x: x['id'])
         entry = {'id': chp,
@@ -329,98 +250,17 @@ def save_tw(filepath, date_today, tw_book_dict):
     write_json(filepath, tw_cat)
 
 
-def run_cq(lang, date_today):
-    cq_path = os.path.join(pages, lang, 'bible/questions/comprehension')
-    for book in os.listdir(cq_path):
-        book_questions = []  # type: list[dict]
-        book_path = os.path.join(cq_path, book)
-        if len(book) > 3:
-            continue
-        if not os.path.isdir(book_path):
-            continue
-        api_path = os.path.join(api_v2, book, lang)
-        for f in glob.glob('{0}/*.txt'.format(book_path)):
-            if 'home.txt' in f:
-                continue
-            book_questions.append(get_cq(f))
-        # Check to see if there are published questions in this book
-        pub_check = [x['cq'] for x in book_questions if len(x['cq']) > 0]
-        if len(pub_check) == 0:
-            print('No published questions for {0}'.format(book))
-            continue
-        book_questions.sort(key=lambda y: y['id'])
-        book_questions.append({'date_modified': date_today})
-        write_json('{0}/questions.json'.format(api_path), book_questions)
-
-
-def get_cq(f):
-    page = codecs.open(f, 'r', encoding='utf-8').read()
-    chapter = {'id': f.rsplit('/')[-1].rstrip('.txt'), 'cq': []}
-    if pub_re.search(page):
-        chapter['cq'] = get_q_and_a(page)
-    return chapter
-
-
-def get_q_and_a(text):
-    cq = []
-    first_line = None
-    for line in text.splitlines():
-        line = line.strip()
-
-        if not first_line and line.startswith('==='):
-            first_line = line
-            continue
-
-        if line.startswith('\n') or \
-                line == '' or \
-                line.startswith('~~') or \
-                line.startswith('===') or \
-                line.startswith('{{') or \
-                line.startswith('**[[') or \
-                line.startswith('These questions will'):
-            continue
-
-        if q_re.search(line):
-            item = {'q': q_re.search(line).group(1).strip()}
-        elif a_re.search(line):
-            item['a'] = a_re.search(line).group(1).strip()
-            item['ref'] = fix_refs(ref_re.findall(item['a']))
-            item['a'] = item['a'].split('[')[0].strip()
-            cq.append(item)
-            continue
-        else:
-            print_error('tQ error in {0}: {1}'.format(first_line, line))
-    return cq
-
-
-def fix_refs(refs):
-    new_refs = []
-    for i in refs:
-        sep = '-'
-        # noinspection PyBroadException
-        try:
-            chp, verses = i.split(':')
-
-            if ',' in verses:
-                sep = ','
-            v_list = verses.split(sep)
-            for v in v_list:
-                new_refs.append('{0}-{1}'.format(chp.zfill(2), v.zfill(2)))
-        except:
-            print(i)
-
-    return new_refs
-
-
 if __name__ == '__main__':
+    print()
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('-v', '--version', dest='version', default=False,
+                        required=True, help='The version number.')
+
+    args = parser.parse_args(sys.argv[1:])
+
     today = ''.join(str(datetime.date.today()).rsplit('-')[0:3])
-    run_tn('en', today)
 
-    # todo: 03 OCT 2016, need new script to publish tW from Gogs
-    # run_kt('en', today)
-
-    # todo: 03 OCT 2016, need new script to publish tQ from Gogs
-    # run_cq('en', today)
-
-    print_ok('Finished: ', 'exported tN.')
-
+    print_ok('STARTING: ', 'publishing tN from Dokuwiki.')
+    run_tn(args.version, 'en', today)
+    print_ok('ALL FINISHED: ', 'publishing tN from Dokuwiki.')
+    print_notice('Don\'t forget to notify the interested parties.')
