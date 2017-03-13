@@ -152,6 +152,7 @@ def main(git_repo, tag, domain):
         book.set_usfm(book_text)
 
         # do basic checks
+        book.verify_usfm_tags()
         book.verify_chapters_and_verses(True)
         if book.validation_errors:
             errors_found = True
