@@ -3,9 +3,8 @@
 ### Steps for Publishing tN
 
     cd uw-publish
-    python execute.py export_tn_tw_tq
+    python execute.py publish_tn --version 6
     
-    python /var/www/vhosts/door43.org/tools/uw/update_catalog.py
     chown -R syncthing:syncthing /var/www/vhosts/api.unfoldingword.org/httpdocs/
     
 On pki.unfoldingword.org run
@@ -15,7 +14,7 @@ On pki.unfoldingword.org run
 ### Steps for Publishing tW
 
     cd uw-publish
-    python execute.py publish_tw
+    python execute.py publish_tw --version 6 --tag v6
     
     chown -R syncthing:syncthing /var/www/vhosts/api.unfoldingword.org/httpdocs/
     
@@ -26,7 +25,7 @@ On pki.unfoldingword.org run
 ### Steps for Publishing tQ
 
     cd uw-publish
-    python execute.py publish_tq
+    python execute.py publish_tq --version 6 --tag v6
     
     chown -R syncthing:syncthing /var/www/vhosts/api.unfoldingword.org/httpdocs/
     

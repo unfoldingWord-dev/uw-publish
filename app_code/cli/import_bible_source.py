@@ -16,18 +16,15 @@
 from __future__ import print_function, unicode_literals
 import argparse
 import codecs
-import json
 import os
-import re
 import shutil
 import sys
 import datetime
-
 from general_tools.print_utils import print_warning
 from uw.update_catalog import update_catalog
-from app_code.bible.content import Book, Chapter, Chunk
+from app_code.bible.content import Book
 from general_tools.file_utils import unzip, write_file
-from general_tools.url_utils import download_file, get_url
+from general_tools.url_utils import download_file
 from app_code.cli.api_publish import api_publish
 
 # remember these so we can delete them
@@ -36,22 +33,11 @@ unzipped_dir = ''
 
 out_template = '/var/www/vhosts/api.unfoldingword.org/httpdocs/{0}/txt/1/{0}-{1}'
 
-s5_re = re.compile(r'\\s5\s*')
-nl_re = re.compile(r'\n{2,}')
-
-# TODO: change these to point to the API when it is available
-api_root = 'https://raw.githubusercontent.com/unfoldingWord-dev/uw-api/develop/static'
-vrs_file = api_root + '/versification/ufw/ufw.vrs'
-book_file = api_root + '/versification/ufw/books.json'
-chunk_url = api_root + '/versification/ufw/chunks/{0}.json'
-
 
 def main(resource, lang, slug, name, checking, contrib, ver, check_level,
          comments, source):
 
     global downloaded_file, unzipped_dir, out_template
-
-    vrs = get_versification()  # type: list<Book>
 
     today = ''.join(str(datetime.date.today()).rsplit('-')[0:3])
     downloaded_file = '/tmp/{0}'.format(resource.rpartition('/')[2])
@@ -76,7 +62,7 @@ def main(resource, lang, slug, name, checking, contrib, ver, check_level,
 
         # there are usfm files, which book is this?
         test_dir = root.rpartition('/')[2]
-        book = next((b for b in vrs if b.dir_name == test_dir), None)  # type: Book
+        book = Book.create_book(test_dir)  # type: Book
 
         if book:
             book_text = ''
@@ -86,13 +72,8 @@ def main(resource, lang, slug, name, checking, contrib, ver, check_level,
                 with codecs.open(os.path.join(root, usfm_file), 'r', 'utf-8') as in_file:
                     book_text += in_file.read() + '\n'
 
-            # remove superfluous line breaks
-            book_text = nl_re.sub('\n', book_text)
-
-            # remove \s5 lines
-            book_text = s5_re.sub('', book_text)
-
             book.set_usfm(book_text)
+            book.clean_usfm()
 
             # do basic checks
             book.verify_usfm_tags()
@@ -104,7 +85,6 @@ def main(resource, lang, slug, name, checking, contrib, ver, check_level,
                 continue
 
             # get chunks for this book
-            get_chunks(book)
             book.apply_chunks()
 
             # produces something like '01-GEN.usfm'
@@ -159,62 +139,12 @@ def main(resource, lang, slug, name, checking, contrib, ver, check_level,
     print('Check {0} and do a git push'.format(out_dir))
 
 
-def get_versification():
-    """
-    Get the versification file and parse it into book, chapter and verse information
-    :return: list<Book>
-    """
-    global vrs_file, book_file
-
-    # get the list of books
-    books = json.loads(get_url(book_file))
-
-    # get the versification file
-    raw = get_url(vrs_file)
-    lines = [l for l in raw.replace('\r', '').split('\n') if l and l[0:1] != '#']
-
-    scheme = []
-    for key, value in iter(books.items()):
-
-        book = Book(key, value[0], int(value[1]))
-
-        # find the key in the lines
-        for line in lines:
-            if line[0:3] == key:
-                chapters = line[4:].split()
-                for chapter in chapters:
-                    parts = chapter.split(':')
-                    book.chapters.append(Chapter(int(parts[0]), int(parts[1])))
-                scheme.append(book)
-                break
-
-    return scheme
-
-
 def get_re(text, regex):
     se = regex.search(text)
     if se:
         return se.group(1).strip()
 
     return None
-
-
-def get_chunks(book):
-    """
-    :type book: Book
-    """
-    global chunk_url
-
-    chunk_str = get_url(chunk_url.format(book.book_id.lower()))
-    if not chunk_str:
-        raise Exception('Could not load chunks for ' + book.book_id)
-
-    chunks_obj = json.loads(chunk_str)
-
-    # chunk it
-    for chapter in chunks_obj:
-        for first_verse in chapter['first_verses']:
-            book.chunks.append(Chunk(chapter['chapter'], first_verse))
 
 
 if __name__ == '__main__':
